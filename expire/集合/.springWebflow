@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<webflow-project-description>
+	<version>1</version>
+	<pluginVersion><![CDATA[3.7.2.201511260958-RELEASE]]></pluginVersion>
+	<configs>
+		<config>
+			<file>src/com/hlyc/array/xx.xml</file>
+			<name><![CDATA[xx]]></name>
+		</config>
+	</configs>
+</webflow-project-description>

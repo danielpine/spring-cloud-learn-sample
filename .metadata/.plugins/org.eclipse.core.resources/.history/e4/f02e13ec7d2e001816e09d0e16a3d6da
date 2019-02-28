@@ -1,0 +1,263 @@
+package com.finanstar.fx.service.impl;
+
+import com.finanstar.fx.service.FxFxoEntityServiceI;
+import org.jeecgframework.core.common.service.impl.CommonServiceImpl;
+import com.finanstar.fx.entity.FxFxoEntityEntity;
+import com.finanstar.fx.json.Json;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.io.Serializable;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+
+import org.jeecgframework.core.util.ApplicationContextUtil;
+import org.jeecgframework.core.util.MyClassLoader;
+import org.jeecgframework.core.util.StringUtil;
+import org.jeecgframework.web.cgform.enhance.CgformEnhanceJavaInter;
+
+@Service("fxFxoEntityService")
+@Transactional
+public class FxFxoEntityServiceImpl extends CommonServiceImpl implements FxFxoEntityServiceI {
+
+
+  public void delete(FxFxoEntityEntity entity) throws Exception {
+    super.delete(entity);
+    // 执行删除操作增强业务
+    this.doDelBus(entity);
+  }
+
+  public Serializable save(FxFxoEntityEntity entity) throws Exception {
+    Serializable t = super.save(entity);
+    // 执行新增操作增强业务
+    this.doAddBus(entity);
+    return t;
+  }
+
+  public void saveOrUpdate(FxFxoEntityEntity entity) throws Exception {
+    super.saveOrUpdate(entity);
+    // 执行更新操作增强业务
+    this.doUpdateBus(entity);
+  }
+
+  /**
+   * 新增操作增强业务
+   * 
+   * @param t
+   * @return
+   */
+  private void doAddBus(FxFxoEntityEntity t) throws Exception {
+    // -----------------sql增强 start----------------------------
+    // -----------------sql增强 end------------------------------
+
+    // -----------------java增强 start---------------------------
+    // -----------------java增强 end-----------------------------
+  }
+
+  /**
+   * 更新操作增强业务
+   * 
+   * @param t
+   * @return
+   */
+  private void doUpdateBus(FxFxoEntityEntity t) throws Exception {
+    // -----------------sql增强 start----------------------------
+    // -----------------sql增强 end------------------------------
+
+    // -----------------java增强 start---------------------------
+    // -----------------java增强 end-----------------------------
+  }
+
+  /**
+   * 删除操作增强业务
+   * 
+   * @param id
+   * @return
+   */
+  private void doDelBus(FxFxoEntityEntity t) throws Exception {
+    // -----------------sql增强 start----------------------------
+    // -----------------sql增强 end------------------------------
+
+    // -----------------java增强 start---------------------------
+    // -----------------java增强 end-----------------------------
+  }
+
+  private Map<String, Object> populationMap(FxFxoEntityEntity t) {
+    Map<String, Object> map = new HashMap<String, Object>();
+    map.put("id", t.getId());
+    map.put("create_name", t.getCreateName());
+    map.put("create_by", t.getCreateBy());
+    map.put("create_date", t.getCreateDate());
+    map.put("update_name", t.getUpdateName());
+    map.put("update_by", t.getUpdateBy());
+    map.put("update_date", t.getUpdateDate());
+    map.put("sys_org_code", t.getSysOrgCode());
+    map.put("sys_company_code", t.getSysCompanyCode());
+    map.put("bpm_status", t.getBpmStatus());
+    map.put("tradeserial", t.getTradeserial());
+    map.put("market", t.getMarket());
+    map.put("valuedate", t.getValuedate());
+    map.put("resched", t.getResched());
+    map.put("notionalfirst", t.getNotionalfirst());
+    map.put("ccyfirst", t.getCcyfirst());
+    map.put("strike", t.getStrike());
+    map.put("notionalsecond", t.getNotionalsecond());
+    map.put("ccysecond", t.getCcysecond());
+    map.put("buysell", t.getBuysell());
+    map.put("callput", t.getCallput());
+    map.put("unwdate", t.getUnwdate());
+    map.put("effdate", t.getEffdate());
+    map.put("expdate", t.getExpdate());
+    map.put("expdatelag", t.getExpdatelag());
+    map.put("cuttime", t.getCuttime());
+    map.put("cuttimecaledar", t.getCuttimecaledar());
+    map.put("paydate", t.getPaydate());
+    map.put("calendar", t.getCalendar());
+    map.put("setmethod", t.getSetmethod());
+    map.put("setindex", t.getSetindex());
+    map.put("optstatus", t.getOptstatus());
+    return map;
+  }
+
+  /**
+   * 替换sql中的变量
+   * 
+   * @param sql
+   * @param t
+   * @return
+   */
+  public String replaceVal(String sql, FxFxoEntityEntity t) {
+    sql = sql.replace("#{id}", String.valueOf(t.getId()));
+    sql = sql.replace("#{create_name}", String.valueOf(t.getCreateName()));
+    sql = sql.replace("#{create_by}", String.valueOf(t.getCreateBy()));
+    sql = sql.replace("#{create_date}", String.valueOf(t.getCreateDate()));
+    sql = sql.replace("#{update_name}", String.valueOf(t.getUpdateName()));
+    sql = sql.replace("#{update_by}", String.valueOf(t.getUpdateBy()));
+    sql = sql.replace("#{update_date}", String.valueOf(t.getUpdateDate()));
+    sql = sql.replace("#{sys_org_code}", String.valueOf(t.getSysOrgCode()));
+    sql = sql.replace("#{sys_company_code}", String.valueOf(t.getSysCompanyCode()));
+    sql = sql.replace("#{bpm_status}", String.valueOf(t.getBpmStatus()));
+    sql = sql.replace("#{tradeserial}", String.valueOf(t.getTradeserial()));
+    sql = sql.replace("#{market}", String.valueOf(t.getMarket()));
+    sql = sql.replace("#{valuedate}", String.valueOf(t.getValuedate()));
+    sql = sql.replace("#{resched}", String.valueOf(t.getResched()));
+    sql = sql.replace("#{notionalfirst}", String.valueOf(t.getNotionalfirst()));
+    sql = sql.replace("#{ccyfirst}", String.valueOf(t.getCcyfirst()));
+    sql = sql.replace("#{strike}", String.valueOf(t.getStrike()));
+    sql = sql.replace("#{notionalsecond}", String.valueOf(t.getNotionalsecond()));
+    sql = sql.replace("#{ccysecond}", String.valueOf(t.getCcysecond()));
+    sql = sql.replace("#{buysell}", String.valueOf(t.getBuysell()));
+    sql = sql.replace("#{callput}", String.valueOf(t.getCallput()));
+    sql = sql.replace("#{unwdate}", String.valueOf(t.getUnwdate()));
+    sql = sql.replace("#{effdate}", String.valueOf(t.getEffdate()));
+    sql = sql.replace("#{expdate}", String.valueOf(t.getExpdate()));
+    sql = sql.replace("#{expdatelag}", String.valueOf(t.getExpdatelag()));
+    sql = sql.replace("#{cuttime}", String.valueOf(t.getCuttime()));
+    sql = sql.replace("#{cuttimecaledar}", String.valueOf(t.getCuttimecaledar()));
+    sql = sql.replace("#{paydate}", String.valueOf(t.getPaydate()));
+    sql = sql.replace("#{calendar}", String.valueOf(t.getCalendar()));
+    sql = sql.replace("#{setmethod}", String.valueOf(t.getSetmethod()));
+    sql = sql.replace("#{setindex}", String.valueOf(t.getSetindex()));
+    sql = sql.replace("#{optstatus}", String.valueOf(t.getOptstatus()));
+    sql = sql.replace("#{UUID}", UUID.randomUUID().toString());
+    return sql;
+  }
+
+  /**
+   * 执行JAVA增强
+   */
+  private void executeJavaExtend(String cgJavaType, String cgJavaValue, Map<String, Object> data)
+      throws Exception {
+    if (StringUtil.isNotEmpty(cgJavaValue)) {
+      Object obj = null;
+      try {
+        if ("class".equals(cgJavaType)) {
+          // 因新增时已经校验了实例化是否可以成功，所以这块就不需要再做一次判断
+          obj = MyClassLoader.getClassByScn(cgJavaValue).newInstance();
+        } else if ("spring".equals(cgJavaType)) {
+          obj = ApplicationContextUtil.getContext().getBean(cgJavaValue);
+        }
+        if (obj instanceof CgformEnhanceJavaInter) {
+          CgformEnhanceJavaInter javaInter = (CgformEnhanceJavaInter) obj;
+          javaInter.execute("fx_fxo", data);
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new Exception("执行JAVA增强出现异常！");
+      }
+    }
+  }
+
+  @Override
+  public void packageFxoCurveVolToJson(FxFxoEntityEntity entity) throws Exception {
+    // market name
+    String PricerFx = "PricerFx";
+    String Version = "Version";
+    String Market = "Market";
+    String market = entity.getMarket();
+    // fxo json object
+    Json j = new Json(PricerFx);
+    j.addElement(Version, "101");
+    j.addElement(Market, market);
+
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+
+    j.addElement("ValueDate", sdf.format(entity.getValuedate()));
+    j.addElement("Job", "Risk");
+    j.addElement("ReturnTrade", "Yes");
+    j.addElement("ReturnCurve", "Yes");
+    j.addElement("AccrualDay", "0");
+
+
+    Json j11 = j.addElement("DealSet");
+    if (entity.getResched()==1) {
+      j11.addElement("ReSched", "Yes");
+    } else {
+      j11.addElement("ReSched", "No");
+    }
+    j11.addElement("NumDeal", "1");
+    Json j111 = j11.addElement("Deal.0");
+    j111.addElement("DealId", "New");
+    j111.addElement("DealType", "FX_OPTN");
+    j111.addElement("Msgs", "");
+    Json j1111 = j111.addElement("TradeTerm");
+    j1111.addElement("DealType", "FX_OPTN");
+    j1111.addElement("Market", market);
+    j1111.addElement("Notional1", entity.getNotionalfirst());
+    j1111.addElement("Strike", entity.getStrike());
+    j1111.addElement("Tenor", entity.getExpdatelag());
+    j1111.addElement("EffDate",sdf.format(entity.getEffdate()) );
+    j1111.addElement("ExpDate", sdf.format(entity.getExpdate()));
+    j1111.addElement("CutTime", entity.getCuttime());
+    j1111.addElement("CutCity", entity.getCuttimecaledar());
+    j1111.addElement("PayDate", sdf.format(entity.getPaydate()));
+    j1111.addElement("Calendar", entity.getCalendar());
+    j1111.addElement("BuySell", entity.getBuysell());
+    j1111.addElement("CallPut", entity.getCallput());
+    j1111.addElement("UnwindDate", "");
+    j1111.addElement("SetMethod", entity.getSetmethod());
+    j1111.addElement("SetIndex", entity.getSetindex());
+    j1111.addElement("OptStatus", entity.getOptstatus());
+
+    Json j12 = j.addElement("CurveDefine");
+    j12.addElement("NumCrv", 2);
+    Json j121=j12.addElement("CrvDef0");
+      j121.addElement(Market, market);
+      j121.addElement("StaDate", sdf.format(entity.getValuedate()));
+      Json j1211=j121.addElement("Instr");
+        j1211.addElement("Num", "");
+    
+    Json j122=j12.addElement("CrvDef1");
+    
+    
+    
+
+    Json j13 = j.addElement("ModelPair");
+
+
+
+  }
+}

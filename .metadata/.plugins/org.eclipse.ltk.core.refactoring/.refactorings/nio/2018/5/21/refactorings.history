@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring accessors="true" comment="Delete 6 elements from project &apos;nio&apos;&#x0D;&#x0A;- Original project: &apos;nio&apos;&#x0D;&#x0A;- Original elements:&#x0D;&#x0A;     vinci.ie.sogou.com_8477.txt&#x0D;&#x0A;     vinci.ie.sogou.com_8528.txt&#x0D;&#x0A;     vinci.ie.sogou.com_8529.txt&#x0D;&#x0A;     vinci.ie.sogou.com_8903.txt&#x0D;&#x0A;     vinci.ie.sogou.com_8904.txt&#x0D;&#x0A;     vinci.ie.sogou.com_8905.txt" description="Delete elements" element1="vinci.ie.sogou.com_8903.txt" element2="vinci.ie.sogou.com_8477.txt" element3="vinci.ie.sogou.com_8904.txt" element4="vinci.ie.sogou.com_8528.txt" element5="vinci.ie.sogou.com_8905.txt" element6="vinci.ie.sogou.com_8529.txt" elements="0" flags="589830" id="org.eclipse.jdt.ui.delete" resources="6" stamp="1526865621324" subPackages="false" version="1.0"/>
+</session>

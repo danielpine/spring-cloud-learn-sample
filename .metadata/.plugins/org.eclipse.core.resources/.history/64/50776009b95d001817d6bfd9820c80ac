@@ -1,0 +1,398 @@
+package com.finanstar.eqcm.service.impl;
+
+import java.beans.PropertyDescriptor;
+import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.apache.log4j.Logger;
+import org.hibernate.Query;
+import org.hibernate.SQLQuery;
+import org.hibernate.Session;
+import org.hibernate.transform.Transformers;
+import org.jeecgframework.core.common.service.impl.CommonServiceImpl;
+import org.jeecgframework.poi.excel.annotation.Excel;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.alibaba.fastjson.support.odps.udf.CodecCheck.A;
+import com.finanstar.deal.abstractentityimpl.TradeTermFxOptn;
+import com.finanstar.deal.entity.Booking;
+import com.finanstar.deal.entity.Deal;
+import com.finanstar.deal.entity.DealItem;
+import com.finanstar.deal.entity.Line;
+import com.finanstar.eqcm.controller.EqcmController;
+import com.finanstar.eqcm.entity.DerielemResetBusdyConvEntity;
+import com.finanstar.eqcm.entity.MarketConvEqcmEntity;
+import com.finanstar.eqcm.entity.MartketInstrEqcmEntity;
+import com.finanstar.eqcm.entity.PricingAdjEqcmEntity;
+import com.finanstar.eqcm.service.EqcmServiceI;
+import com.finanstar.fx.entity.FxVolDataEntity;
+import com.finanstar.fx.entity.FxVolDefContentEntity;
+import com.finanstar.fx.entity.FxVolDefEntity;
+import com.finanstar.marketindex.entity.MarketIndexEntity;
+import com.finanstar.util.common.Util;
+
+@Service("eqcmService")
+@Transactional
+public class EqcmServiceImpl extends CommonServiceImpl implements EqcmServiceI {
+
+  // Logger for this class
+  private static final Logger logger = Logger.getLogger(EqcmServiceImpl.class);
+
+  @Override
+  public List saveTxtToDataBase(String file) {
+
+    if (file.contains("conv")) {
+      List<String[]> listoril = Util.readTxtFile(file);
+      List<String[]> listTirm = new ArrayList<>();
+
+      logger.info(listoril.size());
+
+      for (String[] sa : listoril) {
+        String ss = "";
+        for (String s : sa) {
+          if (!s.equals("")) {
+            ss += s + "~";
+          }
+        }
+        logger.info(ss);
+        listTirm.add(ss.split("~"));
+      }
+
+      int j = 0;
+
+      List<String> h = new ArrayList<>();
+
+      for (int i = 0; i < listTirm.get(0).length; i++) {
+        if (i == 0) {
+          h.add("code");
+        } else if (i <= 3 && i > 0) {
+          h.add(listTirm.get(1)[i].trim().toLowerCase());
+        } else {
+          // h.add(list.get(0)[i].trim().toLowerCase() +"_"+
+          // list.get(1)[i].trim().toLowerCase());
+          String ss = listTirm.get(1)[i].trim().toLowerCase();
+          h.add(listTirm.get(0)[i].trim().toLowerCase() + ss.substring(0, 1).toUpperCase()
+              + ss.substring(1));
+        }
+      }
+
+      logger.info(h);
+
+      List<MarketConvEqcmEntity> eList = new ArrayList<>();
+      for (String[] l : listTirm) {
+        if (j > 1) {
+          Class clazz;
+          try {
+            clazz = Class.forName("com.finanstar.eqcm.entity.MarketConvEqcmEntity");
+            Object obj = clazz.newInstance();
+            Field[] fields = clazz.getDeclaredFields();
+            // 写数据
+            for (Field f : fields) {
+              String name = f.getName();
+              if (h.contains(name)) {
+                int idx = h.indexOf(name);
+                PropertyDescriptor pd = new PropertyDescriptor(name, clazz);
+                Method wM = pd.getWriteMethod();// 获得写方法
+                wM.invoke(obj, l[idx].trim());
+              }
+            }
+            eList.add((MarketConvEqcmEntity) obj);
+          } catch (Exception e) {
+            e.printStackTrace();
+          }
+
+        }
+        j++;
+      }
+
+      for (MarketConvEqcmEntity m : eList) {
+        this.save(m);
+      }
+
+      return eList;
+    } else if (file.contains("instr")) {
+      List<String[]> list = Util.readTxtFile(file);
+
+      logger.info(list.size());
+
+      for (String[] sa : list) {
+        String ss = "";
+        for (String s : sa) {
+          ss += s + "~";
+        }
+        logger.info(ss);
+      }
+
+      // 市场工具
+      List<MartketInstrEqcmEntity> eList = new ArrayList<>();
+      List<String> h = new ArrayList<>();
+      String[] el = new String[] {"market", "num", "tenor", "curve", "fxing", "source", "c1",
+          "code1", "fid1", "c2", "code2", "fid2"};
+      for (String se : el) {
+        h.add(se);
+      }
+
+      for (String[] l : list) {
+
+        Class<?> clazz = null;
+        try {
+          clazz = Class.forName("com.finanstar.eqcm.entity.MartketInstrEqcmEntity");
+          Object obj = clazz.newInstance();
+          Field[] fields = clazz.getDeclaredFields();
+          // 写数据
+          for (Field f : fields) {
+            String name = f.getName();
+            if (h.contains(name)) {
+              logger.info(name);
+              int idx = h.indexOf(name);
+              PropertyDescriptor pd = new PropertyDescriptor(name, clazz);
+              Method wM = pd.getWriteMethod();// 获得写方法
+              logger.info(l[idx].trim());
+              wM.invoke(obj, l[idx].trim());
+            }
+          }
+          eList.add((MartketInstrEqcmEntity) obj);
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+
+      for (MartketInstrEqcmEntity m : eList) {
+        this.save(m);
+      }
+
+      return eList;
+    } else if (file.contains("voldir")) {
+      // 目录
+      File ff = new File(file);
+      // 目录
+      // fx
+      // eqcm
+      File[] files = ff.listFiles();
+      for (File fil : files) {
+
+        Set<String> Mkt = new HashSet<>();
+
+        String name = fil.getName();
+        logger.info(name);
+        File[] fs2 = fil.listFiles();
+        for (File f : fs2) {
+          String name2 = f.getName();
+          logger.info(name2);
+          // eqcmvol.20180402.cmecorn
+          String[] s = name2.split("[vol]*\\.");
+          for (String sss : s) {
+            logger.info(sss);
+          }
+          FxVolDataEntity data = new FxVolDataEntity();
+          data.setFxVolDate(s[1]);
+          data.setFxVolContentId(name2.replaceAll("\\.", "_"));
+          String[] s2 = name2.split("\\.");
+          data.setFxVolDefId(s2[0] + "_" + s2[2]);
+
+          this.save(data);
+
+          List<String> read = Util.read(f.getAbsolutePath());
+          int i = 0;
+
+          String[] head = null;
+
+          for (String str : read) {
+            if (str.length() != 0) {
+              // 第一行
+              // 第二行
+              // fxvol_20170425_usdcny FxVolDefContentEntity
+              // FxVolDataEntity
+
+              if (i == 0 || i == 1) {
+
+                if (i == 1) {
+                  head = str.split("\\s+");
+                } else {
+
+                  if (!Mkt.contains(s[2])) {
+                    String[] tp = str.split("\\s+");
+                    FxVolDefEntity def = new FxVolDefEntity();
+                    def.setMarket(s2[2].toUpperCase());
+                    def.setDatasource("Reuters");
+                    if (name.equals("eqcm")) {
+
+                      def.setVoltype(tp[1]);
+                      def.setIntsr(tp[2]);
+                      def.setContentid(s2[0] + "_" + s2[2]);
+                    } else {
+
+                      def.setVoltype(tp[1]);
+                      def.setIntsr(tp[2]);
+                      def.setContentid(s2[0] + "_" + s2[2]);
+                    }
+
+                    this.save(def);
+
+                    Mkt.add(s[2]);
+                  }
+                }
+
+              } else {
+                String[] body = str.split("\\s+");
+
+                for (int j = 1; j < body.length; j++) {
+                  FxVolDefContentEntity ct = new FxVolDefContentEntity();
+                  ct.setCol(body[0]);
+                  ct.setRow(head[j]);
+                  ct.setValue(body[j]);
+                  ct.setContentid(name2.replaceAll("\\.", "_"));
+                  this.save(ct);
+                }
+
+              }
+
+              i++;
+            }
+          }
+        }
+      }
+
+    } else if (file.contains("tmpdir")) {
+
+      long t1 = System.currentTimeMillis();
+
+      // 目录
+      File ff = new File(file);
+
+      File[] files = ff.listFiles();
+
+      for (File fl : files) {
+        String name = fl.getName();
+
+        String[] split = name.split("\\.");
+
+        String sf = file + "\\" + name;
+
+        List<String> read = Util.read(sf);
+        for (String s : read) {
+
+          if (s.length() != 0) {
+
+            String[] split2 = s.trim().split("\\s+");
+
+            MarketIndexEntity index = new MarketIndexEntity();
+
+            index.setProType(split[1].toUpperCase());
+            index.setMarket(split[2].toUpperCase());
+            index.setDataDate(split2[0]);
+            index.setTenor(split2[1]);
+            index.setValue(split2[2]);
+            this.save(index);
+          }
+        }
+
+      }
+      long t2 = System.currentTimeMillis();
+      logger.info("TIME: " + (t2 - t1));
+
+    } else if (file.contains("volskew")) {
+
+      List<String> read = Util.read(file);
+
+      for (String s : read) {
+        String[] ss = s.split("\\s+");
+        PricingAdjEqcmEntity adj = new PricingAdjEqcmEntity();
+
+        adj.setMarket(ss[0]);
+        adj.setYear(ss[1]);
+        adj.setAlpha(ss[2]);
+        adj.setBeta(ss[3]);
+        adj.setVolAdj(ss[4]);
+        adj.setDiscSprd(ss[5]);
+
+        this.save(adj);
+      }
+
+    }
+    return null;
+
+  }
+
+  @Override
+  public List<String> findAllMarket() {
+    String hql = "select name from MarketConvEqcmEntity where active=? ";// order by name
+    return this.findHql(hql, "Yes");
+  }
+
+  @Override
+  public MarketConvEqcmEntity findConvByMarket(String market) {
+    String hql = "from MarketConvEqcmEntity where name=?";
+    return (MarketConvEqcmEntity) this.findHql(hql, market).get(0);
+  }
+
+  @Override
+  public List<MartketInstrEqcmEntity> findInstrByMarket(String market, String fxing) {
+    String hql = "from MartketInstrEqcmEntity where market=? and fxing=?";
+    return this.findHql(hql, market, fxing);
+  }
+
+  @Override
+  public String findAllExerBusdy() {
+    List<DerielemResetBusdyConvEntity> list = this.getList(DerielemResetBusdyConvEntity.class);
+
+    StringBuffer s = new StringBuffer();
+
+    if (list.isEmpty() || list == null) {
+      s.append("NODATA");
+    } else {
+
+      for (int i = 0; i < list.size(); i++) {
+        s.append(list.get(i).getCode());
+        if (i < list.size() - 1) {
+          s.append(",");
+        }
+      }
+
+    }
+
+    return s.toString();
+  }
+
+  @Override
+  public String saveMarketIndex(MarketIndexEntity index) {
+
+    // 存之前删除，旧数据
+    // 并判断tenor是否为 新条目 以便 更新市场工具
+    List<MarketIndexEntity> findHql = this.findHql(
+        "from MarketIndexEntity where proType=? and dataDate=? and market=? and tenor=?",
+        index.getProType(), index.getDataDate(), index.getMarket(), index.getTenor());
+    if (!findHql.isEmpty()) {
+      for (MarketIndexEntity old : findHql) {
+        logger.info("old index deleted | " + old);
+        this.delete(old);
+      }
+    }
+    return (String) this.save(index);
+  }
+
+  @Override
+  public List<String> saveMarketIndexBatch(List<MarketIndexEntity> indexList) {
+
+    List<String> list = new ArrayList<>();
+
+    for (MarketIndexEntity index : indexList) {
+      Integer result = this.executeSql(
+          "delete from market_index where pro_type=? and data_date=? and market=? and tenor=?",
+          index.getProType(), index.getDataDate(), index.getMarket(), index.getTenor());
+      System.out.println("result:" + result);
+    }
+    for (MarketIndexEntity index : indexList) {
+      String id = (String) this.save(index);
+      list.add(id);
+    }
+    return list;
+  }
+
+}

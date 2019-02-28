@@ -1,0 +1,1868 @@
+package com.finanstar.eqcm.service.impl;
+
+import java.io.File;
+import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.Future;
+
+import org.apache.log4j.Logger;
+import org.hibernate.SQLQuery;
+import org.hibernate.Session;
+import org.jeecgframework.core.common.service.impl.CommonServiceImpl;
+import org.jeecgframework.core.util.PropertiesUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.finanstar.eqcm.entity.EqcmOptnVO;
+import com.finanstar.eqcm.entity.MarketAdjEqcmEntity;
+import com.finanstar.eqcm.entity.MarketConvEqcmEntity;
+import com.finanstar.eqcm.entity.MartketInstrEqcmEntity;
+import com.finanstar.eqcm.entity.NewMarket;
+import com.finanstar.eqcm.entity.deal.EqcmDeal;
+import com.finanstar.eqcm.entity.report.ReportEqcm;
+import com.finanstar.eqcm.entity.report.ReportEqcmLine;
+import com.finanstar.eqcm.entity.vo.EqcmDealVo;
+import com.finanstar.eqcm.service.Serializer;
+import com.finanstar.fx.entity.FxVolDataEntity;
+import com.finanstar.fx.entity.FxVolDefContentEntity;
+import com.finanstar.fx.entity.FxVolDefEntity;
+import com.finanstar.marketindex.entity.MarketIndexEntity;
+import com.finanstar.util.common.Util;
+import com.finanstar.util.common.json.Json;
+import com.finanstar.util.email.SimpleMailSender;
+
+@Service("serializerService")
+@Transactional
+public class SerializerImpl extends CommonServiceImpl implements Serializer {
+
+  // Logger for this class
+  private static final Logger logger = Logger.getLogger(SerializerImpl.class);
+
+
+  @Override
+  public Map<String, String> pkgGenVol(List<List<MarketIndexEntity>> indexPkgList, String market,
+      String date) {
+    PropertiesUtil util = new PropertiesUtil("sysConfig.properties");
+    Map<String, String> rMap = new LinkedHashMap<>();
+
+    Json j = null;
+
+    try {
+      j = new Json("VolatStat");
+      /*
+       * Version : "101", ValueDate : "20180524", Market : "ZCEZC", Job : "VolStat", VolType :
+       * "LOGN", InstType : "ALPHA/BETA", ReturnMatrix : "Yes",
+       */
+      j.addElement("Version", "101");
+      j.addElement("ValueDate", date);
+      j.addElement("Market", market);
+      j.addElement("Job", "VolStat");
+      j.addElement("VolType", "LOGN");
+      j.addElement("InstType", "ALPHA/BETA");
+      j.addElement("ReturnMatrix", "Yes");
+      Json CurveDefine = j.addElement("CurveDefine");
+
+      CurveDefine.addElement("NumCrv", indexPkgList.size());
+
+      int i = 0;
+
+      for (List<MarketIndexEntity> list : indexPkgList) {
+        String tag = "CrvDef" + i;
+        i++;
+        Json CrvDef = CurveDefine.addElement(tag);
+
+        MarketIndexEntity aIndex = list.get(0);
+
+        CrvDef.addElement("Market", aIndex.getMarket());
+        CrvDef.addElement("StaDate", aIndex.getDataDate());
+        Json Instr = CrvDef.addElement("Instr");
+        Instr.addElement("Num", list.size());
+        int k = 0;
+        for (MarketIndexEntity index : list) {
+          String ptag = "P." + k;
+          k++;
+          Instr.addElement(ptag,
+              index.getMarket() + "_" + index.getTenor() + "~" + index.getValue());
+        }
+      }
+
+
+      Json MarketVolAdj = j.addElement("MarketVolAdj");
+
+      List<MarketAdjEqcmEntity> adj =
+          this.findByProperty(MarketAdjEqcmEntity.class, "market", market);
+      MarketVolAdj.addElement("Market", market);
+      Json UserData = MarketVolAdj.addElement("UserData");
+
+      UserData.addElement("Market", "Year~Alpha~Beta~VolAdj");
+      UserData.addElement("Num", adj.size());
+      int t = 0;
+      for (MarketAdjEqcmEntity oneadj : adj) {
+        String tag = "P." + t;
+        t++;
+
+        StringBuilder bu = new StringBuilder();
+        bu.append(oneadj.getYear());
+        bu.append("~");
+        bu.append(oneadj.getAlpha());
+        bu.append("~");
+        bu.append(oneadj.getBeta());
+        bu.append("~");
+        bu.append(oneadj.getVolAdj());
+
+        UserData.addElement(tag, bu.toString());
+      }
+
+      String jin = j.write();
+
+      String mainDir = null;
+      String s = File.separator;
+      SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+      SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMdd_HHmmss");
+
+      // 判断OS
+      boolean iswindows = true;
+      Properties prop = System.getProperties();
+      String os = prop.getProperty("os.name");
+      logger.info(os);
+      if (os.toLowerCase().contains("win")) {
+        logger.info("Running On " + os);
+        mainDir = util.readProperty("eqcm_windows_main_dir");
+        System.out.println(mainDir);
+      } else {
+        logger.info("Running On " + os);
+        iswindows = false;
+        mainDir = util.readProperty("eqcm_linux_main_dir");
+      }
+
+      File f = new File(mainDir + sdf.format(new Date()));
+      if (!f.exists()) {
+        f.mkdirs();
+      }
+      // ss.substring(ss.length() - 4, ss.length() - 1)s
+      String ss = System.currentTimeMillis() + "";
+      String inDataFileName = "genvol" + "_" + "eqcm" + "_" + sdf2.format(new Date()) + "_"
+          + (int) (Math.random() * 1000) + "_" + market.toLowerCase() + ".jsn";
+      String filetruepath = f + s + inDataFileName;
+      File ff = new File(filetruepath);
+
+      ff.createNewFile();
+
+      // 生成文件
+      Util.write(filetruepath, jin);
+      logger.info("Create Json File At: " + filetruepath);
+      rMap.put("infile", filetruepath);
+
+      // post_1.上传
+      // Util.uploadToLinuxServer(ff.toString(), "192.168.140.128", 8888);
+
+      // post_2.调用本地CMD程序
+
+      int issuccess = -1;
+
+      if (iswindows) {
+        // 清屏
+        Future<String> future = Util.runExeThread(inDataFileName, "vstat -usr eqcm",
+            System.currentTimeMillis() + Util.getRandomInt(4));
+        for (;;) {
+          if (future.isDone()) {
+            logger.info(future.get());
+            break;
+          } else {
+            //logger.info("执行中");
+          }
+        }
+
+      } else {
+        issuccess = Util.runExeOnLinux(inDataFileName, "eqcm -usr eqcm");
+      }
+
+
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+
+
+    return null;
+  }
+
+  @Override
+  public Map<String, String> pkgEqcmOptnJson(EqcmOptnVO vo) {
+
+    PropertiesUtil util = new PropertiesUtil("sysConfig.properties");
+
+    Map<String, String> rMap = new LinkedHashMap<>();
+
+    // 环境更改数据
+    Map<String, Object> env = vo.getEnv();
+
+    Json j = null;
+
+    try {
+      j = new Json("PricerEqcm");
+      String ValueDate = vo.getValueDate().replaceAll("-", "");
+      String market = vo.getMarket();
+
+      j.addElement("Version", "101");
+      j.addElement("Market", market);
+      j.addElement("ValueDate", ValueDate);
+      j.addElement("Job", "Risk");
+      j.addElement("ReturnTrade", "Yes");
+      j.addElement("ReturnCurve", "Yes");
+      j.addElement("AccrualDay", "0");
+
+      Json DealSet = j.addElement("DealSet");
+
+      if (vo.getResetsched().get(0).length() > 5) {
+        DealSet.addElement("ReSched", "Yes");
+      } else {
+        DealSet.addElement("ReSched", "No");
+      }
+
+      DealSet.addElement("NumDeal", "1");
+
+      Json Deal = DealSet.addElement("Deal.0");
+
+      Deal.addElement("DealId", vo.getDealId());
+      Deal.addElement("DealType", vo.getDealType());
+      Deal.addElement("Msgs", vo.getMsgs());
+
+      // No.1 prev page data.
+      Json TradeTerm = Deal.addElement("TradeTerm");
+
+      TradeTerm.addElement("DealType", vo.getDealType());
+      TradeTerm.addElement("SubType", vo.getConv().getSubType());
+      TradeTerm.addElement("Market", vo.getMarket());
+      TradeTerm.addElement("BuySell", vo.getBuySell());
+      TradeTerm.addElement("CallPut", vo.getCallPut());
+      TradeTerm.addElement("Notional", vo.getNotional().replaceAll(",", ""));
+      TradeTerm.addElement("Strike", vo.getStrike().replaceAll(",", ""));
+      TradeTerm.addElement("EffDate", vo.getEffDate().replaceAll("-", ""));
+
+      String uwd = "0";
+      if (!vo.getUnwindDate().equals("")) {
+        uwd = vo.getUnwindDate().replaceAll("-", "");
+      }
+
+      TradeTerm.addElement("UnwindDate", uwd);
+      TradeTerm.addElement("ExpDate", vo.getExpDate().replaceAll("-", ""));
+      TradeTerm.addElement("CutTime", vo.getCutTime());
+      TradeTerm.addElement("Tenor", vo.getTenor());
+      TradeTerm.addElement("ExpCal", vo.getExpCal());
+      TradeTerm.addElement("ExpBusdy", vo.getExpBusdy());
+      TradeTerm.addElement("PayDate", vo.getPayDate().replaceAll("-", ""));
+      TradeTerm.addElement("PayCal", vo.getPayCal());
+      TradeTerm.addElement("PayLag", vo.getConv().getPaytLag());
+      TradeTerm.addElement("SetMethod", vo.getSetMethod());
+      TradeTerm.addElement("SetIndex", vo.getSetIndex());
+      TradeTerm.addElement("OptStatus", vo.getOptStatus());
+
+      List<String> sched = vo.getResetsched();
+
+      if (sched.get(0).length() > 5) {
+
+        TradeTerm.addElement("HasSched", "Yes");
+        Json Sched = TradeTerm.addElement("Sched");
+        Sched.addElement("Title",
+            "EffDate~ExpDate~PayDate~FaceAmt~FixValue~Strike~Index~ResType~Vol~Payment~Unit");
+        Sched.addElement("Num", sched.size());
+        for (int i = 0; i < sched.size(); i++) {
+          Sched.addElement("P." + i, sched.get(i).substring(2));
+        }
+
+      }
+      // LumpPay 20180509
+
+      String pricingccy = vo.getConv().getPriceCcy();
+
+      List<String> lump = vo.getLump();
+
+      int NumPay = lump.size();
+
+      if (lump.get(0).length() > 5) {// 如果为空会传一个"null"字符串
+        Json LumpPay = TradeTerm.addElement("LumpPay");
+        LumpPay.addElement("PricingCcy", pricingccy);
+        LumpPay.addElement("NumPay", NumPay);
+        for (int i = 0; i < NumPay; i++) {
+          String tag = "Perd" + i;
+          Json perd = LumpPay.addElement(tag);
+          String[] s = lump.get(i).split("~");
+          perd.addElement("PayDate", s[1].replace("-", ""));
+          perd.addElement("Amount", s[2]);
+          perd.addElement("Ccy", s[3]);
+          perd.addElement("Type", s[4]);
+          perd.addElement("Comment", s[5]);
+        }
+
+      }
+
+      // No.2 CurveDefine
+
+      // TODO 非空判断 index 有可能没有数据;
+
+      Json cuv = j.addElement("CurveDefine");
+      cuv.addElement("NumCrv", 2);
+      // 曲线1
+      Json CrvDef0 = cuv.addElement("CrvDef0");
+      CrvDef0.addElement("Market", market);
+      CrvDef0.addElement("StaDate", ValueDate);
+      Json CrvDef01 = CrvDef0.addElement("Instr");
+
+      // 2018-05-09 Market's EQCM Curve
+      List<String> c0 = findCurveTenorsValue(market, "EQCM", ValueDate);
+
+      CrvDef01.addElement("Num", c0.size());
+      for (int i = 0; i < c0.size(); i++) {
+        String line = c0.get(i);
+        // dealwith env modifiy ↓
+        String[] split = line.split("~");
+
+        if (env != null && env.containsKey(split[0])) {
+          line = split[0] + "~" + env.get(split[0]);
+        }
+        // dealwith env modifiy ↑
+
+        CrvDef01.addElement("P." + i, line);
+      }
+      // ++++++++++++++++++++++C2+++++++++++++++++++++
+      // 曲线2
+      Json CrvDef1 = cuv.addElement("CrvDef1");
+      CrvDef1.addElement("Market", vo.getConv().getDiscntMarket());
+      CrvDef1.addElement("StaDate", ValueDate);
+      Json CrvDef11 = CrvDef1.addElement("Instr");
+
+      // 2018-05-09 DiscntMarket's SWAP Curve
+      List<String> c1 = findCurveSwapTenorsValue(vo.getConv().getDiscntMarket(), "SWAP", ValueDate);
+
+      CrvDef11.addElement("Num", c1.size());
+      for (int i = 0; i < c1.size(); i++) {
+        String line = c1.get(i);
+
+        // dealwith env modifiy ↓
+        String[] split = line.split("~");
+        if (env != null && env.containsKey(split[0])) {
+          line = split[0] + "~" + env.get(split[0]);
+        }
+        // dealwith env modifiy ↑
+
+        CrvDef11.addElement("P." + i, line);
+      }
+
+      // No.3 ModelPair
+      Json ModelPair = j.addElement("ModelPair");
+      // Find vol
+      FxVolDataEntity voldata = findSingalVolDataByDate(ValueDate, "eqcm%" + market.toLowerCase());
+      ModelPair.addElement("Type", "EQCM_BS");
+      ModelPair.addElement("HasVega", "No");
+      Json Model = ModelPair.addElement("Model");
+      Model.addElement("Version", "101");
+      Model.addElement("ModelType", "EQCM_BS");
+      Json MarketVol = Model.addElement("MarketVol");
+
+      FxVolDefEntity def = null;
+
+      // 无数据异常处理
+      try {
+        def = findVolDefByContentid(voldata.getFxVolDefId());
+      } catch (Exception e) {
+        String errorinfo = "DataBase Have No Data <br>for "
+            + ("[eqcm_" + market.toLowerCase() + "]").toUpperCase() + " <br>of " + ValueDate;
+        logger.error(errorinfo);
+        rMap.put("error", errorinfo);
+        return rMap;
+      }
+
+      MarketVol.addElement("Market", def.getMarket());
+      MarketVol.addElement("StaDate", voldata.getFxVolDate());
+      // MarketVol.addElement("VolType", def.getVoltype());
+      MarketVol.addElement("VolType", "LOGN");
+      // MarketVol.addElement("InstType", def.getIntsr());
+      MarketVol.addElement("InstType", "ALPHA/BETA");
+
+      List<FxVolDefContentEntity> dataList = findAllVolByContentid(voldata.getFxVolContentId());
+      HashSet<String> colset = new LinkedHashSet<String>();
+      HashSet<String> rowset = new LinkedHashSet<String>();
+      Map<String, String> dataMap = new LinkedHashMap<String, String>();
+      for (FxVolDefContentEntity d : dataList) {
+        // StringBuffer buf=new StringBuffer();
+        String col = d.getCol();
+        String row = d.getRow();
+        if (!colset.contains(col)) {
+          colset.add(col);
+        }
+        if (!rowset.contains(row)) {
+          rowset.add(row);
+        }
+        String k = col + row;
+
+        String v = d.getValue();
+
+        // 处理第1+次更改的数据
+
+        if (env != null && env.containsKey(k)) {
+          v = "" + env.get(k);
+        }
+
+        dataMap.put(k, v);
+      }
+
+      MarketVol.addElement("NumExpy", colset.size());
+      // MarketVol.addElement("NumDelt", rowset.size());
+
+      String c = "~";// 连接符
+      // 第一行
+      StringBuffer Delta = new StringBuffer("Days" + c);
+      // 余下行
+      List<String> pList = new ArrayList<String>();
+
+      // 遍历rowset 生成Delta
+      Iterator<String> it = rowset.iterator();
+      while (it.hasNext()) {
+        String row = it.next();
+        Delta.append(row + c);
+      }
+      // 添加日期
+      Delta.append(ValueDate);
+
+      MarketVol.addElement("Delta", Delta.toString());
+
+      // 遍历colset
+      Iterator<String> itcol = colset.iterator();
+      while (itcol.hasNext()) {
+        String col = itcol.next();
+        StringBuffer line = new StringBuffer(col + c);
+        Iterator<String> itrow = rowset.iterator();
+        while (itrow.hasNext()) {
+          String row = itrow.next();
+          String key = col + row;
+          line.append(dataMap.get(key) + c);
+        }
+        // 添加日期
+        line.append(ValueDate);
+        pList.add(line.toString());
+      }
+      // 遍历pList
+      for (int i = 0; i < pList.size(); i++) {
+        MarketVol.addElement("P." + i, pList.get(i));
+      }
+
+      String jin = j.write();
+
+      String mainDir = null;
+      String s = File.separator;
+      SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+      SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMdd_HHmmss");
+
+      // 判断OS
+      boolean iswindows = true;
+      Properties prop = System.getProperties();
+      String os = prop.getProperty("os.name");
+      logger.info(os);
+      if (os.toLowerCase().contains("win")) {
+        logger.info("Running On " + os);
+        mainDir = util.readProperty("eqcm_windows_main_dir");
+        System.out.println(mainDir);
+      } else {
+        logger.info("Running On " + os);
+        iswindows = false;
+        mainDir = util.readProperty("eqcm_linux_main_dir");
+      }
+
+      File f = new File(mainDir + sdf.format(new Date()));
+      if (!f.exists()) {
+        f.mkdirs();
+      }
+      // ss.substring(ss.length() - 4, ss.length() - 1)s
+      String ss = System.currentTimeMillis() + "";
+      String inDataFileName = "optn" + "_" + "eqcm" + "_" + sdf2.format(new Date()) + "_"
+          + (int) (Math.random() * 1000) + "_" + market.toLowerCase() + ".jsn";
+      String filetruepath = f + s + inDataFileName;
+      File ff = new File(filetruepath);
+
+      ff.createNewFile();
+
+      // 生成文件
+      Util.write(filetruepath, jin);
+      logger.info("Create Json File At: " + filetruepath);
+      rMap.put("infile", filetruepath);
+
+      // post_1.上传
+      // Util.uploadToLinuxServer(ff.toString(), "192.168.140.128", 8888);
+
+      // post_2.调用本地CMD程序
+
+      int issuccess = -1;
+
+      if (iswindows) {
+        // 清屏
+        issuccess = Util.runExe(inDataFileName, "eqcm -usr eqcm");
+      } else {
+        issuccess = Util.runExeOnLinux(inDataFileName, "eqcm -usr eqcm");
+      }
+
+      // 解析计算结果
+      if (issuccess == 0) {
+        // exe执行成功可以解析out json
+        // 返回生成文件全路径
+        String outfilepath = ff.toString().replace(".jsn", "_out.jsn");
+        rMap.put("outfile", outfilepath);
+        logger.info("Batch Out Json File At: " + outfilepath);
+      } else {
+        logger.error("Batch run failed.");
+      }
+      rMap.put("in", jin);
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    return rMap;
+
+  }
+
+  /**
+   * 查询波动率数据或者定义代码
+   * 
+   */
+  @Override
+  public List<FxVolDefContentEntity> findAllVolByContentid(String contentid) {
+    String hql = "from FxVolDefContentEntity where contentid=?";
+
+    List<FxVolDefContentEntity> list = super.findHql(hql, contentid);
+
+    return list;
+  }
+
+  /**
+   * 根据日期找到内容
+   */
+  @Override
+  public FxVolDataEntity findSingalVolDataByDate(String date, String reg) {
+
+    List<FxVolDataEntity> data = super.findHql(
+        "from FxVolDataEntity where fxVolDate=? and fxVolContentId like ?", date, reg);
+
+    if (!data.isEmpty()) {
+      FxVolDataEntity vol2 = (FxVolDataEntity) data.get(0);
+      return vol2;
+    } else {
+      return null;
+    }
+  }
+
+  @Override
+  public List<FxVolDefEntity> findVolDefByMarketName(String market) {
+    return super.findHql("from FxVolDefEntity where market=?", market);
+  }
+
+  @Override
+  public FxVolDefEntity findVolDefByContentid(String contentid) {
+    List<FxVolDefEntity> list = super.findHql("from FxVolDefEntity where contentid=?", contentid);
+    if (!list.isEmpty()) {
+      FxVolDefEntity def = (FxVolDefEntity) list.get(0);
+      return def;
+    } else {
+      return null;
+    }
+  }
+
+  @Override
+  public List<MartketInstrEqcmEntity> findInstrByMarket(String market, String fxing) {
+    String hql = "from MartketInstrEqcmEntity where market=? and fxing=?";
+    return this.findHql(hql, market, fxing);
+  }
+
+  @Override
+  public List<String> findCurveTenorsValue(String market, String protype, String yyMMdd) {
+    String sql = "select x.* from market_instr_eqcm s "
+        + ",market_index x where s.market=x.market  and s.tenor=x.tenor  and s.curve=1  "
+        + "and s.market=? and x.pro_type=?   and x.data_date=?";
+    Session session = getSession();
+    SQLQuery query = session.createSQLQuery(sql);
+    query.setParameter(0, market);
+    query.setParameter(1, protype);
+    query.setParameter(2, yyMMdd);
+    query.addEntity(MarketIndexEntity.class);
+    @SuppressWarnings("unchecked")
+    List<MarketIndexEntity> list = query.list();
+
+    List<String> l = new ArrayList<>();
+
+    if (!list.isEmpty()) {
+
+      for (MarketIndexEntity m : list) {
+        l.add(m.getConcatString());
+      }
+    }
+
+    return l;
+  }
+
+  @Override
+  public List<String> findCurveSwapTenorsValue(String market, String protype, String yyMMdd) {
+    String sql = "select x.* from market_instrs s "
+        + ",market_index x where s.marketname=x.market  and s.tenor=x.tenor  and s.curve=1  "
+        + "and s.marketname=? and x.pro_type in (?,?)  and x.data_date=?";
+    Session session = getSession();
+    SQLQuery query = session.createSQLQuery(sql);
+    query.setParameter(0, market);
+    query.setParameter(1, protype);
+    query.setParameter(2, "CASH");
+    query.setParameter(3, yyMMdd);
+    query.addEntity(MarketIndexEntity.class);
+    @SuppressWarnings("unchecked")
+    List<MarketIndexEntity> list = query.list();
+
+    List<String> l = new ArrayList<>();
+
+    if (!list.isEmpty()) {
+
+      for (MarketIndexEntity m : list) {
+        l.add(m.getConcatString());
+      }
+    }
+
+    return l;
+  }
+
+  @Override
+  public Map<String, Map<String, String>> packageBatchDataToJson(List<EqcmDeal> dl, String yymmdd,
+      String jobType) throws Exception {
+
+    // 返回值
+    Map<String, Map<String, String>> rMap = new HashMap<>();
+
+    // 判断OS
+    boolean iswindows = true;
+
+    // 按市场分包
+    Map<String, List<EqcmDeal>> marketMap = new LinkedHashMap<>();
+
+    // String lastMarket = null;
+    Set<String> marketSet = new HashSet<>();
+
+    for (EqcmDeal d : dl) {
+      EqcmDealVo vo = new EqcmDealVo(d);
+      String market = vo.getMarket();
+
+      if (!marketSet.contains(market)) {
+        marketSet.add(market);
+      }
+      if (marketMap.containsKey(market)) {
+        marketMap.get(market).add(d);
+      } else {
+        marketMap.put(market, new ArrayList<EqcmDeal>());
+        marketMap.get(market).add(d);
+      }
+    }
+
+    // System.out.println(marketMap);
+
+    // 打包
+
+    Set<String> keySet = marketMap.keySet();
+
+    Iterator<String> iterator = keySet.iterator();
+
+    // 文件集合
+    List<String> filelist = new ArrayList<>();
+    Map<String, String> fileFullPathlist = new HashMap<>();
+    Map<String, String> rJson = new HashMap<>();
+
+    while (iterator.hasNext()) {
+
+      String market = iterator.next();
+
+      rJson.put(market, "");
+
+      // 市场惯例
+      MarketConvEqcmEntity marketconv = (MarketConvEqcmEntity) this
+          .findHql("from MarketConvEqcmEntity where name=?", market).get(0);
+
+      // ★★★★★★★★★★重新赋值★★★★★★★★★★
+      dl = marketMap.get(market);
+
+      // =====================package↓=======================
+      // 非空判断
+      if (dl.isEmpty()) {
+        return null;
+      }
+
+      // 50个一包
+
+      Map<String, List<EqcmDeal>> mL50per = new HashMap<>();
+
+      int size = dl.size();
+
+      int packageSize = 5;
+
+      int packageCount = size % packageSize == 0 ? (size / packageSize) : (size / packageSize) + 1;
+
+      for (int i = 0; i < packageCount; i++) {
+
+        int start = i * packageSize;
+
+        int end = (i + 1) * packageSize;
+
+        // 最后一包
+        if (i == packageCount - 1) {
+          end = size;
+        }
+
+        List<EqcmDeal> d = new ArrayList<>();
+
+        for (int j = start; j < end; j++) {
+          d.add(dl.get(j));
+        }
+        mL50per.put(i + "", d);
+      }
+
+      Iterator<String> it = mL50per.keySet().iterator();
+
+      int pindex = 0;
+
+      SimpleDateFormat sdfDir = new SimpleDateFormat("yyyyMMdd");
+      SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+
+      // 文件相关begin
+
+      String mainDir = null;
+      String s = File.separator;
+
+      Properties prop = System.getProperties();
+      String os = prop.getProperty("os.name");
+      // System.out.println(os);
+      if (os.startsWith("win") || os.startsWith("Win")) {
+        // System.out.println("running on windows.");
+        mainDir = "D:" + s + "FinanDeris" + s + "service_io" + s + "eqcm" + s;
+      } else {
+        // System.out.println("running on linux.");
+        iswindows = false;
+        mainDir = "/var/www/html/finanstar" + s + "FinanDeris" + s + "service_io" + s + "eqcm" + s;
+      }
+
+      File f = new File(mainDir + sdfDir.format(new Date()));
+      if (!f.exists()) {
+        f.mkdirs();
+      }
+
+      while (it.hasNext()) {
+        String n = it.next();
+        // System.out.println(n + ":" + mL50per.get(n));
+
+        // TODO
+        String filename = jobType.toLowerCase() + "_eqcm_" + sdf.format(new Date()) + "_"
+            + market.toLowerCase() + "_" + pindex + ".jsn";
+        pindex++;
+        // File
+        String filetruepath = f + s + filename;
+
+        File ff = new File(filetruepath);
+
+        ff.createNewFile();
+
+        filelist.add(filename);
+        fileFullPathlist.put(market + pindex, filetruepath);
+
+        // 生成JSON BEGIN************
+
+        // 生成DealSet的时候使用
+        List<EqcmDeal> list = mL50per.get(n);
+
+
+        Json j = new Json("PricerRate");
+        j.addElement("Version", "101");
+        j.addElement("Market", market);
+        j.addElement("ValueDate", yymmdd);
+        j.addElement("Job", jobType);
+
+        if (jobType.contains("Delta") || jobType.contains("Vega")) {
+          j.addElement("ReturnTrade", "No");
+        } else {
+          j.addElement("ReturnTrade", "Yes");
+        }
+
+        j.addElement("ReturnCurve", "No");
+        Json DealSet = j.addElement("DealSet");
+
+        DealSet.addElement("ReSched", "No");
+        DealSet.addElement("NumDeal", list.size());
+        for (int i = 0; i < list.size(); i++) {
+          String tag = "Deal." + i;
+          EqcmDeal deal = list.get(i);
+          Json D = DealSet.addElement(tag);
+          D.addElement("DealId", deal.getDealId());
+          D.addElement("DealType", deal.getDealType());
+          // String msg = deal.getDealItem().getMsg() == null ? "" : deal.getDealItem().getMsg();
+          D.addElement("Msgs", deal.getMsgs());
+
+          Json T = D.addElement("TradeTerm");
+
+          String tradeTerm = deal.getTradeTerm();
+
+          // System.out.println(tradeTerm);
+
+          JSONObject parse = (JSONObject) JSON.parse(tradeTerm);
+
+          T.addElement("DealType", parse.getString("DealType"));
+          T.addElement("SubType", parse.getString("SubType"));
+          T.addElement("Market", parse.getString("Market"));
+          T.addElement("BuySell", parse.getString("BuySell"));
+          T.addElement("CallPut", parse.getString("CallPut"));
+          T.addElement("Notional", parse.getString("Notional"));
+          T.addElement("Strike", parse.getString("Strike"));
+          T.addElement("EffDate", parse.getString("EffDate"));
+          T.addElement("UnwindDate", parse.getString("UnwindDate"));
+          T.addElement("ExpDate", parse.getString("ExpDate"));
+          T.addElement("CutTime", parse.getString("CutTime"));
+          T.addElement("Tenor", parse.getString("Tenor"));
+          T.addElement("ExpCal", parse.getString("ExpCal"));
+          T.addElement("ExpBusdy", parse.getString("ExpBusdy"));
+          T.addElement("PayDate", parse.getString("PayDate"));
+          T.addElement("PayCal", parse.getString("PayCal"));
+          T.addElement("PayLag", parse.getString("PayLag"));
+          T.addElement("SetMethod", parse.getString("SetMethod"));
+          T.addElement("SetIndex", parse.getString("SetIndex"));
+          T.addElement("OptStatus", parse.getString("OptStatus"));
+          if (parse.getJSONObject("Sched") != null) {
+            T.addElement("HasSched", "Yes");
+            Json S = T.addElement("Sched");
+            JSONObject sched = parse.getJSONObject("Sched");
+            S.addElement("Title", sched.getString("Title"));
+            String num = sched.getString("Num");
+            S.addElement("Num", num);
+            for (int k = 0; k < Integer.parseInt(num); k++) {
+              String stag = "P." + k;
+              S.addElement(stag, sched.getString(stag));
+            }
+
+          } else {
+            T.addElement("HasSched", "No");
+          }
+          if (parse.getJSONObject("LumpPay") != null) {
+            /*
+             * {"PricingCcy":"CNY","NumPay":"1","Perd0":{"Comment":"To add a note...","Type":"Fee",
+             * "Df":"0","PayDate":"20180403","Pv":"0.00","Amount":"1231231","SchDate":"20180403",
+             * "Ccy":"CNY"}}
+             */
+            JSONObject l = parse.getJSONObject("LumpPay");
+
+            Json L = T.addElement("LumpPay");
+
+            L.addElement("PricingCcy", l.getString("PricingCcy"));
+            String num = l.getString("NumPay");
+            L.addElement("NumPay", num);
+
+            for (int k = 0; k < Integer.parseInt(num); k++) {
+              String stag = "Perd" + k;
+              Json P = L.addElement(stag);
+              JSONObject p = l.getJSONObject(stag);
+              P.addElement("PayDate", p.getString("PayDate"));
+              P.addElement("Amount", p.getString("Amount"));
+              P.addElement("Ccy", p.getString("Ccy"));
+              P.addElement("Type", p.getString("Type"));
+              P.addElement("Comment", p.getString("Comment"));
+            }
+          }
+
+        }
+        // No.2 CurveDefine
+
+        // TODO 非空判断 index 有可能没有数据;
+
+        String ValueDate = yymmdd;
+
+        Json cuv = j.addElement("CurveDefine");
+        cuv.addElement("NumCrv", 2);
+        // 曲线1
+        Json CrvDef0 = cuv.addElement("CrvDef0");
+        CrvDef0.addElement("Market", market);
+        CrvDef0.addElement("StaDate", ValueDate);
+        Json CrvDef01 = CrvDef0.addElement("Instr");
+
+        // 2018-05-09 Market's EQCM Curve
+        List<String> c0 = findCurveTenorsValue(market, "EQCM", ValueDate);
+
+        CrvDef01.addElement("Num", c0.size());
+        for (int i = 0; i < c0.size(); i++) {
+          String line = c0.get(i);
+          CrvDef01.addElement("P." + i, line);
+        }
+        // ++++++++++++++++++++++C2+++++++++++++++++++++
+        // 曲线2
+        Json CrvDef1 = cuv.addElement("CrvDef1");
+        CrvDef1.addElement("Market", marketconv.getDiscntMarket());
+        CrvDef1.addElement("StaDate", ValueDate);
+        Json CrvDef11 = CrvDef1.addElement("Instr");
+
+        // 2018-05-09 DiscntMarket's SWAP Curve
+        List<String> c1 = findCurveSwapTenorsValue(marketconv.getDiscntMarket(), "SWAP", ValueDate);
+
+        CrvDef11.addElement("Num", c1.size());
+        for (int i = 0; i < c1.size(); i++) {
+          String line = c1.get(i);
+          CrvDef11.addElement("P." + i, line);
+        }
+
+        // No.3 ModelPair
+        Json ModelPair = j.addElement("ModelPair");
+        // Find vol
+        FxVolDataEntity voldata =
+            findSingalVolDataByDate(ValueDate, "eqcm%" + market.toLowerCase());
+        ModelPair.addElement("Type", "EQCM_BS");
+        ModelPair.addElement("HasVega", "No");
+        Json Model = ModelPair.addElement("Model");
+        Model.addElement("Version", "101");
+        Model.addElement("ModelType", "EQCM_BS");
+        Json MarketVol = Model.addElement("MarketVol");
+
+        FxVolDefEntity def = null;
+
+        // 无数据异常处理
+        try {
+          def = findVolDefByContentid(voldata.getFxVolDefId());
+        } catch (Exception e) {
+          String errorinfo = "DataBase Have No Data <br>for "
+              + ("[eqcm_" + market.toLowerCase() + "]").toUpperCase() + " <br>of " + ValueDate;
+          logger.error(errorinfo);
+          if (rMap.containsKey("error")) {
+            Map<String, String> map = rMap.get("error");
+            map.put(market + pindex, errorinfo);
+          } else {
+            Map<String, String> errM = new HashMap<>();
+            errM.put(market + pindex, errorinfo);
+            rMap.put("error", errM);
+          }
+          return rMap;
+        }
+
+        MarketVol.addElement("Market", def.getMarket());
+        MarketVol.addElement("StaDate", voldata.getFxVolDate());
+        // MarketVol.addElement("VolType", def.getVoltype());
+        MarketVol.addElement("VolType", "LOGN");
+        // MarketVol.addElement("InstType", def.getIntsr());
+        MarketVol.addElement("InstType", "ALPHA/BETA");
+
+        List<FxVolDefContentEntity> dataList = findAllVolByContentid(voldata.getFxVolContentId());
+        HashSet<String> colset = new LinkedHashSet<String>();
+        HashSet<String> rowset = new LinkedHashSet<String>();
+        Map<String, String> dataMap = new LinkedHashMap<String, String>();
+        for (FxVolDefContentEntity d : dataList) {
+          // StringBuffer buf=new StringBuffer();
+          String col = d.getCol();
+          String row = d.getRow();
+          if (!colset.contains(col)) {
+            colset.add(col);
+          }
+          if (!rowset.contains(row)) {
+            rowset.add(row);
+          }
+          String k = col + row;
+
+          String v = d.getValue();
+
+          dataMap.put(k, v);
+        }
+
+        MarketVol.addElement("NumExpy", colset.size());
+        // MarketVol.addElement("NumDelt", rowset.size());
+
+        String c = "~";// 连接符
+        // 第一行
+        StringBuffer Delta = new StringBuffer("Days" + c);
+        // 余下行
+        List<String> pList = new ArrayList<String>();
+
+        // 遍历rowset 生成Delta
+        Iterator<String> itr = rowset.iterator();
+        while (itr.hasNext()) {
+          String row = itr.next();
+          Delta.append(row + c);
+        }
+        // 添加日期
+        Delta.append(ValueDate);
+
+        MarketVol.addElement("Delta", Delta.toString());
+
+        // 遍历colset
+        Iterator<String> itcol = colset.iterator();
+        while (itcol.hasNext()) {
+          String col = itcol.next();
+          StringBuffer line = new StringBuffer(col + c);
+          Iterator<String> itrow = rowset.iterator();
+          while (itrow.hasNext()) {
+            String row = itrow.next();
+            String key = col + row;
+            line.append(dataMap.get(key) + c);
+          }
+          // 添加日期
+          line.append(ValueDate);
+          pList.add(line.toString());
+        }
+        // 遍历pList
+        for (int i = 0; i < pList.size(); i++) {
+          MarketVol.addElement("P." + i, pList.get(i));
+        }
+
+
+
+        String jstr = j.write();
+
+        Util.write(filetruepath, jstr);
+
+        // 生成JSON END**************
+
+      }
+      // =====================package↑=======================
+
+    }
+
+    // System.out.println(filelist);
+
+    // Batch
+    int issuccess = -1;
+
+    // Util.runExe(filelist.get(0));
+
+    Map<String, String> exeResult = new HashMap<>();
+
+    if (iswindows) {
+
+      for (int i = 0; i < filelist.size(); i++) {
+        issuccess = Util.runExe(filelist.get(i), "eqcm -usr eqcm ");
+        exeResult.put(filelist.get(i), issuccess + "");
+      }
+    } else {
+      for (int i = 0; i < filelist.size(); i++) {
+        issuccess = Util.runExeOnLinux(filelist.get(i), "eqcm -usr eqcm ");
+        exeResult.put(filelist.get(i), issuccess + "");
+      }
+    }
+
+    rMap.put("rlt", exeResult);
+    rMap.put("file", fileFullPathlist);
+    rMap.put("rjson", rJson);
+
+    return rMap;
+  }
+
+  @Override
+  public Map<String, Map<String, String>> packageBatchEqcmPAA(String compdeskbook, String yymmdd,
+      String jobtype) throws IOException {
+
+    // 返回值
+    Map<String, Map<String, String>> rMap = new HashMap<>();
+    // 文件集合
+    List<String> filelist = new ArrayList<>();
+    Map<String, String> fileFullPathlist = new HashMap<>();
+    Map<String, String> rJson = new HashMap<>();
+
+    String[] b = compdeskbook.split("@");
+
+    Calendar toDay = Calendar.getInstance();
+
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+
+    try {
+      toDay.setTime(sdf.parse(yymmdd));
+    } catch (ParseException e) {
+      e.printStackTrace();
+    }
+
+    toDay.add(Calendar.DATE, -1);
+    String preDay = sdf.format(toDay.getTime());
+
+    // System.out.println(yymmdd);
+    // System.out.println(preDay);
+
+    List<ReportEqcm> todayDelta = findReportByDate(yymmdd, "Delta", b[0], b[1], b[2]);
+    List<ReportEqcm> predayDelta = findReportByDate(preDay, "Delta", b[0], b[1], b[2]);
+
+    List<ReportEqcm> todayVega = findReportByDate(yymmdd, "Vega", b[0], b[1], b[2]);
+    List<ReportEqcm> predayVega = findReportByDate(preDay, "Vega", b[0], b[1], b[2]);
+
+    Map<String, Map<String, ReportEqcm>> map = new HashMap<String, Map<String, ReportEqcm>>();
+
+    for (ReportEqcm r : todayDelta) {
+      String market = r.getMarket();
+      Map<String, ReportEqcm> m = new HashMap<>();
+      m.put("d1", r);
+      map.put(market, m);
+    }
+    for (ReportEqcm r : predayDelta) {
+      String market = r.getMarket();
+      map.get(market).put("d0", r);
+    }
+    for (ReportEqcm r : todayVega) {
+      String market = r.getMarket();
+      map.get(market).put("v1", r);
+    }
+    for (ReportEqcm r : predayVega) {
+      String market = r.getMarket();
+      map.get(market).put("v0", r);
+    }
+
+    String mainDir = null;
+    String s = File.separator;
+    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyyMMdd_HHmmss");
+
+    // 判断OS
+    boolean iswindows = true;
+    Properties prop = System.getProperties();
+    String os = prop.getProperty("os.name");
+    logger.info(os);
+    if (os.toLowerCase().contains("win")) {
+      logger.info("Running On " + os);
+      mainDir = "D:" + s + "FinanDeris" + s + "service_io" + s + "eqcm" + s;
+    } else {
+      logger.info("Running On " + os);
+      iswindows = false;
+      mainDir = "/var/www/html/finanstar" + s + "FinanDeris" + s + "service_io" + s + "eqcm" + s;
+    }
+
+    File f = new File(mainDir + sdf.format(new Date()));
+    if (!f.exists()) {
+      f.mkdirs();
+    }
+
+    Iterator<String> iterator = map.keySet().iterator();
+
+    while (iterator.hasNext()) {
+      String market = iterator.next();
+      Map<String, ReportEqcm> report = map.get(market);
+      rJson.put(market, "");
+
+      String filename = jobtype.toLowerCase() + "_eqcm_" + sdf.format(new Date()) + "_"
+          + market.toLowerCase() + "_" + ".jsn";
+      // File
+      String filetruepath = f + s + filename;
+
+      File ff = new File(filetruepath);
+
+      ff.createNewFile();
+
+      filelist.add(filename);
+      fileFullPathlist.put(market, filetruepath);
+
+
+      try {
+        Json j = new Json("PricerRate");
+        j.addElement("Version", "101");
+        j.addElement("Market", market);
+        j.addElement("ValueDate", yymmdd);
+        j.addElement("Job", jobtype);
+        j.addElement("ReturnTrade", "No");
+        j.addElement("ReturnTrade", "No");
+        Json DeltaValue = j.addElement("DeltaValue");
+        DeltaValue.addElement("NumDays", "2");
+        Json Dayd0 = DeltaValue.addElement("Day0");
+        Dayd0.addElement("Date", preDay);
+        ReportEqcm reportd0 = report.get("d0");
+        List<ReportEqcmLine> ld1 = reportd0.getReport();
+        Dayd0.addElement("Title", reportd0.getTitle().replaceAll("Title:", "~"));
+        Dayd0.addElement("Num", ld1.size());
+        for (int i = 0; i < ld1.size(); i++) {
+          String tag = "P." + i;
+          ReportEqcmLine reportEqcmLine = ld1.get(i);
+          Dayd0.addElement(tag, "~" + reportEqcmLine.getItem());
+        }
+        Json Dayd1 = DeltaValue.addElement("Day1");
+        Dayd1.addElement("Date", yymmdd);
+        ReportEqcm reportd1 = report.get("d1");
+        List<ReportEqcmLine> ld2 = reportd1.getReport();
+        Dayd1.addElement("Title", reportd1.getTitle().replaceAll("Title:", "~"));
+        Dayd1.addElement("Num", ld2.size());
+        for (int i = 0; i < ld2.size(); i++) {
+          String tag = "P." + i;
+          ReportEqcmLine reportEqcmLine = ld2.get(i);
+          Dayd1.addElement(tag, "~" + reportEqcmLine.getItem());
+        }
+        Json VegaValue = j.addElement("VegaValue");
+        VegaValue.addElement("NumDays", "2");
+        Json Dayv0 = VegaValue.addElement("Day0");
+        Dayv0.addElement("Date", preDay);
+        ReportEqcm reportdv0 = report.get("v0");
+        List<ReportEqcmLine> lv1 = reportdv0.getReport();
+        Dayv0.addElement("Title", "~" + reportdv0.getTitle().split("Title:")[1]);
+        Dayv0.addElement("Num", lv1.size());
+        for (int i = 0; i < lv1.size(); i++) {
+          String tag = "P." + i;
+          ReportEqcmLine reportEqcmLine = lv1.get(i);
+          Dayv0.addElement(tag, "~" + reportEqcmLine.getItem());
+        }
+        Json Dayv1 = VegaValue.addElement("Day1");
+        Dayv1.addElement("Date", yymmdd);
+        ReportEqcm reportdv1 = report.get("d1");
+        List<ReportEqcmLine> lv2 = reportdv1.getReport();
+        Dayv1.addElement("Title", "~" + reportdv1.getTitle().split("Title:")[1]);
+        Dayv1.addElement("Num", lv2.size());
+        for (int i = 0; i < lv2.size(); i++) {
+          String tag = "P." + i;
+          ReportEqcmLine reportEqcmLine = lv2.get(i);
+          Dayv1.addElement(tag, "~" + reportEqcmLine.getItem());
+        }
+        String jstr = j.write();
+
+        Util.write(filetruepath, jstr);
+
+
+
+      } catch (Exception e) {
+        e.printStackTrace();
+      } finally {
+      }
+
+
+    }
+
+    // Batch
+    int issuccess = -1;
+
+    // Util.runExe(filelist.get(0));
+
+    Map<String, String> exeResult = new HashMap<>();
+
+    if (iswindows) {
+
+      for (int i = 0; i < filelist.size(); i++) {
+        issuccess = Util.runExe(filelist.get(i), "eqcm -usr eqcm ");
+        exeResult.put(filelist.get(i), issuccess + "");
+      }
+    } else {
+      for (int i = 0; i < filelist.size(); i++) {
+        issuccess = Util.runExeOnLinux(filelist.get(i), "eqcm -usr eqcm ");
+        exeResult.put(filelist.get(i), issuccess + "");
+      }
+    }
+
+    rMap.put("rlt", exeResult);
+    rMap.put("file", fileFullPathlist);
+    rMap.put("rjson", rJson);
+
+    // System.out.println(rMap);
+
+
+
+    return rMap;
+
+    // List<ReportEqcm>
+
+
+
+    // TODO Auto-generated method stub
+
+
+
+  }
+
+  @Override
+  public List<ReportEqcm> findReportByDate(String valueDate, String batchType, String comp,
+      String desk, String book) {
+    List<ReportEqcm> list = this.findHql(
+        "from ReportEqcm where valueDate=?  and batchType=? and comp=? and desk=? and book=?",
+        valueDate, batchType, comp, desk, book);
+    return list;
+  }
+
+  @Override
+  public List<ReportEqcm> findReportByDateMarketType(String market, String valueDate,
+      String batchType) {
+    List<ReportEqcm> list = this.findHql(
+        "from ReportEqcm where market=? and valueDate=?  and batchType=?", valueDate, batchType);
+    return list;
+  }
+
+
+
+  @Override
+  public List<String> doCzceOfCes(List<String> li, String date, List<String> data) {
+
+
+    Set<String> nameSet = new HashSet<>();
+
+    List<String> newMarketNameList = new ArrayList<>();
+
+    int background = 0;
+
+    for (String string : data) {
+
+      // 字母开头
+      if (string.substring(0, 1).matches("\\w")) {
+
+        // '\\|'分割
+        // System.out.println(string.split("\\|")[0]);
+
+        String NameAndTenor = string.split("\\|")[0].trim();
+
+        String Name = NameAndTenor.replaceAll("\\d", "").trim();
+
+        String Tenor3Bits = NameAndTenor.replaceAll("\\D", "").trim();
+
+        String Value = string.split("\\|")[5].replaceAll(",", "").trim();
+        // 过滤0值
+        if (Double.parseDouble(Value) != 0) {
+
+          // 背景颜色
+          if (!nameSet.contains(Name)) {
+            nameSet.add(Name);
+            background = Util.BgcolorOfcrawlerPlusOne();
+          }
+
+          String tenor = "";
+
+          tenor += date.substring(0, 3);
+
+          if (Tenor3Bits.startsWith("0")) {
+            // 20年
+            tenor = (Integer.parseInt(tenor) + 1) + "";
+          }
+
+          tenor += Tenor3Bits;
+
+          String binaryBackground = Integer.toBinaryString(background);
+
+          int len = binaryBackground.length();
+
+          // 如果市场惯例里不存在，用代码代替Chinese Name
+          // 查询 市场惯例
+          List<MarketConvEqcmEntity> list = this.findHql(
+              "from MarketConvEqcmEntity where name like ? and masterRic=?", "ZCE" + "%", Name);
+          String tName;
+          String Market;
+
+          boolean notexist = list.isEmpty() ? true : false;
+          if (notexist) {
+            tName = Name;
+            Market = "ZCE" + Name.toUpperCase();
+
+
+            List<NewMarket> mktInDb = this.findHql("from NewMarket where market=?", Market);
+
+            if (mktInDb.isEmpty()) {
+              // 新的市场 邮件通知
+              newMarketNameList.add(Market);
+              // sms.sendEmail("finanstar@qq.com", Market);
+              // 保存 新的市场
+              NewMarket newMarket = new NewMarket();
+
+              newMarket.setMarket(Market);
+
+              this.save(newMarket);
+
+            }
+          } else {
+            tName = list.get(0).getChineseName();
+            Market = list.get(0).getName();
+          }
+
+
+          String line = binaryBackground.substring(len - 1, len) + "~" + date + "~"
+              + tenor.substring(2) + "~" + Value + "~" + Market + "~" + NameAndTenor + "~" + tName;
+
+          li.add(line);
+        }
+      }
+    }
+    if (!newMarketNameList.isEmpty()) {
+      SimpleMailSender sms = new SimpleMailSender();
+      // 新的市场 邮件通知
+      sms.sendEmail("1009463730@qq.com", newMarketNameList.toString());
+    }
+    return li;
+  }
+
+  @Override
+  public List<String> doDceOfCes(List<String> li, String date, List<String> data) {
+
+    List<String> newMarketNameList = new ArrayList<>();
+
+    String cut = "\\s+";
+
+    int dataBit = 5;
+
+    Set<String> nameSet = new HashSet<>();
+
+    int background = 0;
+
+    for (String string : data) {
+
+      // System.out.println(string.trim().substring(0, 5));
+
+      // 字母开头
+      if (string.trim().substring(0, 5).matches(".*\\d+.*")) {
+
+        // System.out.println(string);
+
+        // '\\|'分割
+        // System.out.println(string.split("\\|")[0]);
+
+        // 可抽取为通用方法:分隔符~数据位
+        String[] sa = string.split(cut);
+
+        String NameAndTenor = sa[0].trim();
+
+        String Name = NameAndTenor.replaceAll("\\d", "").trim();
+
+        String Tenor3Bits = NameAndTenor.replaceAll("\\D", "").trim();
+
+        String Value = sa[dataBit].replaceAll(",", "").trim();
+
+        // 过滤0值
+        if (Double.parseDouble(Value) != 0) {
+
+          // 背景颜色
+          if (!nameSet.contains(Name)) {
+            nameSet.add(Name);
+            background = Util.BgcolorOfcrawlerPlusOne();
+          }
+
+          // dce 为四位 可以直接使用
+          String tenor = Tenor3Bits;
+
+          String binaryBackground = Integer.toBinaryString(background);
+
+          int len = binaryBackground.length();
+
+          // 如果市场惯例里不存在，用代码代替Chinese Name
+          // 查询 市场惯例
+          List<MarketConvEqcmEntity> list = this.findHql(
+              "from MarketConvEqcmEntity where name like ? and masterRic=?", "DCE" + "%", Name);
+          String tName;
+          String Market;
+          boolean notexist = list.isEmpty() ? true : false;
+          if (notexist) {
+            tName = Name;
+            Market = "DCE" + Name.toUpperCase();
+            List<NewMarket> mktInDb = this.findHql("from NewMarket where market=?", Market);
+
+            if (mktInDb.isEmpty()) {
+              // 新的市场 邮件通知
+              newMarketNameList.add(Market);
+              // sms.sendEmail("finanstar@qq.com", Market);
+              // 保存 新的市场
+              NewMarket newMarket = new NewMarket();
+
+              newMarket.setMarket(Market);
+
+              this.save(newMarket);
+
+            }
+          } else {
+            tName = list.get(0).getChineseName();
+            Market = list.get(0).getName();
+          }
+
+
+
+          String line = binaryBackground.substring(len - 1, len) + "~" + date + "~" + tenor + "~"
+              + Value + "~" + Market + "~" + NameAndTenor + "~" + tName;
+
+          // System.out.println(line);
+
+          li.add(line);
+        }
+      }
+    }
+    if (!newMarketNameList.isEmpty()) {
+      SimpleMailSender sms = new SimpleMailSender();
+      // 新的市场 邮件通知
+      sms.sendEmail("1009463730@qq.com", newMarketNameList.toString());
+    }
+    return li;
+  }
+
+  @Override
+  public List<String> doShfeOfCes(List<String> li, String date, List<String> data) {
+
+
+    String cut = "\\|";
+
+    List<String> newMarketNameList = new ArrayList<>();
+    int dataBit = 8;
+    int tenorBit = 3;
+
+    Set<String> nameSet = new HashSet<>();
+
+    int background = 0;
+
+    for (String string : data) {
+
+      // System.out.println(string);
+
+      string = string.replaceAll("\\s+", "");
+
+      String[] s = string.split(cut);
+
+      String tenor = s[tenorBit].trim();
+
+      // 字母开头
+      if (tenor.matches("\\d+")) {
+
+        // System.out.println(tenor);
+
+        // '\\|'分割
+        // System.out.println(string.split("\\|")[0]);
+
+        // 可抽取为通用方法:分隔符~数据位
+        String[] sa = s;
+
+        String Name = sa[0].trim().split("_")[0];// cu_f
+
+        String Value = sa[dataBit].replaceAll(",", "").trim();
+
+        // 过滤0值
+
+        // logger.info(Value);
+
+        if (Value.equals("")) {
+          Value = "0";
+        }
+
+        if (Double.parseDouble(Value) != 0) {
+
+          // 背景颜色
+          if (!nameSet.contains(Name)) {
+            nameSet.add(Name);
+            background = Util.BgcolorOfcrawlerPlusOne();
+          }
+
+          String binaryBackground = Integer.toBinaryString(background);
+
+          int len = binaryBackground.length();
+
+          // 如果市场惯例里不存在，用代码代替Chinese Name
+          // 查询 市场惯例
+          List<MarketConvEqcmEntity> list = this.findHql(
+              "from MarketConvEqcmEntity where name like ? and masterRic=?", "SHFE" + "%", Name);
+          String tName;
+          String Market;
+
+          boolean notexist = list.isEmpty() ? true : false;
+          if (notexist) {
+            tName = Name;
+            Market = "SHFE" + Name.toUpperCase();
+            List<NewMarket> mktInDb = this.findHql("from NewMarket where market=?", Market);
+
+            if (mktInDb.isEmpty()) {
+              // 新的市场 邮件通知
+              newMarketNameList.add(Market);
+              // sms.sendEmail("finanstar@qq.com", Market);
+              // 保存 新的市场
+              NewMarket newMarket = new NewMarket();
+
+              newMarket.setMarket(Market);
+
+              this.save(newMarket);
+
+            }
+          } else {
+            tName = list.get(0).getChineseName();
+            Market = list.get(0).getName();
+          }
+
+          String line = binaryBackground.substring(len - 1, len) + "~" + date + "~" + tenor + "~"
+              + Value + "~" + Market + "~" + Name + tenor + "~" + tName;
+
+          // System.out.println(line);
+
+          li.add(line);
+        }
+      }
+    }
+    if (!newMarketNameList.isEmpty()) {
+      SimpleMailSender sms = new SimpleMailSender();
+      // 新的市场 邮件通知
+      sms.sendEmail("1009463730@qq.com", newMarketNameList.toString());
+    }
+    return li;
+  }
+
+  @Override
+  public List<String> doCffexOfCes(List<String> li, String date, List<String> data) {
+
+
+    String cut = ",";
+
+    int dataBit = 7;
+
+    Set<String> nameSet = new HashSet<>();
+
+    int background = 0;
+
+    List<String> newMarketNameList = new ArrayList<>();
+
+    for (String string : data) {
+
+      // System.out.println(string.trim().substring(0, 5));
+
+      // 字母开头
+      if (string.trim().substring(0, 5).matches(".*\\d+.*")) {
+
+        // System.out.println(string);
+
+        // '\\|'分割
+        // System.out.println(string.split("\\|")[0]);
+
+        // 可抽取为通用方法:分隔符~数据位
+        String[] sa = string.split(cut);
+
+        String NameAndTenor = sa[0].trim();
+
+        String Name = NameAndTenor.replaceAll("\\d", "").trim();
+
+        String Tenor3Bits = NameAndTenor.replaceAll("\\D", "").trim();
+
+        String Value = sa[dataBit].replaceAll(",", "").trim();
+
+        // 过滤0值
+        if (Double.parseDouble(Value) != 0) {
+
+          // 背景颜色
+          if (!nameSet.contains(Name)) {
+            nameSet.add(Name);
+            background = Util.BgcolorOfcrawlerPlusOne();
+          }
+
+          // dce 为四位 可以直接使用
+          String tenor = Tenor3Bits;
+
+          String binaryBackground = Integer.toBinaryString(background);
+
+          int len = binaryBackground.length();
+
+          // 如果市场惯例里不存在，用代码代替Chinese Name
+          // 查询 市场惯例
+          List<MarketConvEqcmEntity> list = this.findHql(
+              "from MarketConvEqcmEntity where name like ? and masterRic=?", "CFFEX" + "%", Name);
+          String tName;
+          String Market;
+
+          boolean notexist = list.isEmpty() ? true : false;
+          if (notexist) {
+            tName = Name;
+            Market = "CFFEX" + Name.toUpperCase();
+            List<NewMarket> mktInDb = this.findHql("from NewMarket where market=?", Market);
+
+            if (mktInDb.isEmpty()) {
+
+              newMarketNameList.add(Market);
+
+              // sms.sendEmail("finanstar@qq.com", Market);
+              // 保存 新的市场
+              NewMarket newMarket = new NewMarket();
+
+              newMarket.setMarket(Market);
+
+              this.save(newMarket);
+
+            }
+          } else {
+            tName = list.get(0).getChineseName();
+            Market = list.get(0).getName();
+          }
+
+          String line = binaryBackground.substring(len - 1, len) + "~" + date + "~" + tenor + "~"
+              + Value + "~" + Market + "~" + NameAndTenor + "~" + tName;
+
+          // System.out.println(line);
+
+          li.add(line);
+        }
+      }
+    }
+
+    if (!newMarketNameList.isEmpty()) {
+      SimpleMailSender sms = new SimpleMailSender();
+      // 新的市场 邮件通知
+      sms.sendEmail("1009463730@qq.com", newMarketNameList.toString());
+    }
+    return li;
+  }
+
+  @Override
+  public List<String> doCmcOfCes(List<String> li, String date, List<String> data) {
+    /*
+     * ,交易日期,FR001(%),FR007(%),FR014(%),FDR001(%),FDR007(%),FDR014(%)
+     * 0,2018-03-15,2.6400,3.16,3.7,2.61,2.8,3.6 1,数据来源：,中国货币网,,,,, 2,,www.chinamoney.com.cn,,,,,
+     */
+
+
+    String cut = ",";
+
+    Map<String, Integer> dataBits = new LinkedHashMap<>();
+    dataBits.put("1D", 2);
+    dataBits.put("7D", 3);
+    dataBits.put("2W", 4);
+
+
+    for (String string : data) {
+      // 0开头 为数据行
+      if (string.trim().startsWith("0") && !string.contains("数据来源")) {
+
+
+        for (Map.Entry<String, Integer> entry : dataBits.entrySet()) {
+
+          // 分割
+          String[] csvArr = string.split(cut);
+
+          String tenor = entry.getKey();
+
+          Integer dataBit = entry.getValue();
+
+          String value = csvArr[dataBit];
+
+          StringBuffer bf = new StringBuffer("");
+
+          String binaryString = Integer.toBinaryString(Util.BgcolorOfcrawlerPlusOne());
+
+          int len = binaryString.length();
+
+          bf.append(binaryString.substring(len - 1, len));
+          bf.append("~");
+          bf.append(date);
+          bf.append("~");
+          bf.append(tenor);
+          bf.append("~");
+          bf.append(value);
+          bf.append("~");
+          bf.append("CNYFR");
+          bf.append("~");
+          bf.append("CMC");
+          bf.append("~");
+          bf.append("CASH");
+
+          li.add(bf.toString());
+        }
+
+
+
+      }
+    }
+
+    return li;
+  }
+
+  @Override
+  public List<String> doCmOfCes(List<String> li, String date, List<String> data) {
+    /*
+     * ,交易日期,FR001(%),FR007(%),FR014(%),FDR001(%),FDR007(%),FDR014(%)
+     * 0,2018-03-15,2.6400,3.16,3.7,2.61,2.8,3.6 1,数据来源：,中国货币网,,,,, 2,,www.chinamoney.com.cn,,,,,
+     */
+
+
+    String cut = ",";
+
+    Map<String, Integer> dataBits = new LinkedHashMap<>();
+    dataBits.put("S1M", 5);
+    dataBits.put("S3M", 6);
+    dataBits.put("S6M", 7);
+    dataBits.put("S9M", 8);
+    dataBits.put("S1Y", 9);
+    dataBits.put("S2Y", 10);
+    dataBits.put("S3Y", 11);
+    dataBits.put("S4Y", 12);
+    dataBits.put("S5Y", 13);
+    dataBits.put("S7Y", 14);
+    dataBits.put("S10Y", 15);
+
+
+    for (String string : data) {
+      // 0开头 为数据行
+      if (string.trim().startsWith("0") && !string.contains("数据来源")) {
+
+
+        for (Map.Entry<String, Integer> entry : dataBits.entrySet()) {
+
+          // 分割
+          String[] csvArr = string.split(cut);
+
+          String tenor = entry.getKey();
+
+          Integer dataBit = entry.getValue();
+
+          String value = csvArr[dataBit];
+
+          StringBuffer bf = new StringBuffer("");
+
+          String binaryString = Integer.toBinaryString(Util.BgcolorOfcrawlerPlusOne());
+
+          int len = binaryString.length();
+
+          bf.append(binaryString.substring(len - 1, len));
+          bf.append("~");
+          bf.append(date);
+          bf.append("~");
+          bf.append(tenor);
+          bf.append("~");
+          bf.append(value);
+          bf.append("~");
+          bf.append("CNYFR");
+          bf.append("~");
+          bf.append("CM");
+          bf.append("~");
+          bf.append("SWAP");
+
+          li.add(bf.toString());
+        }
+
+
+
+      }
+    }
+
+    return li;
+  }
+
+  public List<String> parseCesData(String date, String type, List<String> data) {
+
+    List<String> li = new ArrayList<>();
+
+    switch (type) {
+
+      case "czce":
+        li = doCzceOfCes(li, date, data);
+        break;
+      case "dce":
+        li = doDceOfCes(li, date, data);
+        break;
+      case "shfe":
+        li = doShfeOfCes(li, date, data);
+        break;
+      case "cffex":
+        li = doCffexOfCes(li, date, data);
+        break;
+      case "cmc":
+        li = doCmcOfCes(li, date, data);
+        break;
+      case "cm":
+        li = doCmOfCes(li, date, data);
+        break;
+
+      default:
+        break;
+    }
+
+    return li;
+  }
+
+
+
+}

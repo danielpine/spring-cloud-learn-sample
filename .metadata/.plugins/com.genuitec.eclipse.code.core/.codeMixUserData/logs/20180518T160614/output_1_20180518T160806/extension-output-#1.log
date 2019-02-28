@@ -1,0 +1,67 @@
+在 C:\Program Files\Git\cmd\git.exe 查找 Git 中
+使用 C:\Program Files\Git\cmd\git.exe 中的 Git 2.16.2.windows.1
+git rev-parse --show-toplevel
+fatal: Not a git repository (or any of the parent directories): .git
+
+git rev-parse --show-toplevel
+fatal: Not a git repository (or any of the parent directories): .git
+
+git rev-parse --show-toplevel
+git config --get commit.template
+git status -z -u
+git rev-parse --show-toplevel
+git symbolic-ref --short HEAD
+fatal: Not a git repository (or any of the parent directories): .git
+
+git rev-parse --show-toplevel
+git rev-parse --show-toplevel
+git rev-parse --show-toplevel
+fatal: Not a git repository (or any of the parent directories): .git
+
+git rev-parse --show-toplevel
+git rev-parse eqcm
+git rev-parse --symbolic-full-name --abbrev-ref eqcm@{u}
+fatal: Not a git repository (or any of the parent directories): .git
+
+git rev-parse --show-toplevel
+git rev-parse --show-toplevel
+git rev-parse --show-toplevel
+fatal: Not a git repository (or any of the parent directories): .git
+
+git rev-parse --show-toplevel
+git rev-parse --show-toplevel
+git rev-list --left-right eqcm...ce/eqcm
+git for-each-ref --format %(refname) %(objectname) --sort -committerdate
+git remote --verbose
+fatal: Not a git repository (or any of the parent directories): .git
+
+git rev-parse --show-toplevel
+fatal: Not a git repository (or any of the parent directories): .git
+
+git rev-parse --show-toplevel
+fatal: Not a git repository (or any of the parent directories): .git
+
+git rev-parse --show-toplevel
+git rev-parse --show-toplevel
+git rev-parse --show-toplevel
+git rev-parse --show-toplevel
+git rev-parse --show-toplevel
+git rev-parse --show-toplevel
+git show :src/main/resources/dbconfig.properties
+git check-ignore -z --stdin
+git show :src/main/webapp/plug-in/finanstar/js/eqcm/priced.js
+git check-ignore -z --stdin
+git show :src/main/webapp/webpage/com/finanstar/eqcm/price/leg.jsp
+git show :src/main/webapp/webpage/com/finanstar/eqcm/report/report_vega.jsp
+git show :src/main/webapp/webpage/com/finanstar/eqcm/report/report_vega.jsp
+git show :src/main/webapp/webpage/com/finanstar/eqcm/price/leg.jsp
+git show :src/main/webapp/webpage/com/finanstar/eqcm/price/lump.jsp
+git show :PythonCrawler/run.bat
+git check-ignore -z --stdin
+git show :src/main/webapp/webpage/com/finanstar/eqcm/price/lump.jsp
+git show :PythonCrawler/CE_Crawler/Crawler_.py
+git check-ignore -z --stdin
+git show :src/main/webapp/webpage/com/finanstar/eqcm/price/lump.jsp
+git show :src/main/webapp/webpage/com/finanstar/eqcm/report/report_vega.jsp
+git show :src/main/webapp/webpage/com/finanstar/add-deal.js
+git check-ignore -z --stdin

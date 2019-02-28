@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;parent/simple-parent&apos; to &apos;deri-parent&apos;" description="Rename resource &apos;simple-parent&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="simple-parent" name="deri-parent" stamp="1534313862092" updateReferences="true"/>
+</session>

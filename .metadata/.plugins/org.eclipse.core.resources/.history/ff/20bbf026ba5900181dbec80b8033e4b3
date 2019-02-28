@@ -1,0 +1,287 @@
+﻿<!-- daniel created at 2018-04-24.-->
+<%@ page language="java" import="com.finanstar.fx.entity.*"
+	contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>Deal</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<script type="text/javascript"
+	src="/deri-web/plug-in/jquery/jquery-1.8.3.js"></script>
+<link rel="stylesheet"
+	href="/deri-web/plug-in/easyui/themes/metrole/deri.css" type="text/css"></link>
+
+</head>
+<style>
+body {
+	margin: 0px 10px;
+	background: lightyellow;
+	font-family: "Helvetica", "Arial", "微软雅黑", "宋体", sans-serif;
+}
+
+a {
+	color: blue;
+	text-decoration: none;
+	font-family: 'Microsoft YaHei';
+}
+
+a:hover {
+	color: bule;
+	text-decoration: underline;
+}
+
+.price tbody tr:hover {
+	background-color: green;
+}
+
+.head input {
+	text-align: center;
+	background: orange;
+	height: 100%;
+	width: 100px;
+	font-size: 0.9em;
+}
+
+select {
+	text-align: center;
+	background: orange;
+	width: 100px;
+	font-size: 0.9em;
+}
+
+select option {
+	background: orange;
+	text-align: center;
+}
+
+p {
+	line-height: 20px
+}
+
+li {
+	line-height: 30px
+}
+
+h1 {
+	font-family: "Microsoft YaHei";
+}
+
+h2 {
+	font-family: "Microsoft YaHei";
+}
+
+h3 {
+	font-family: "Microsoft YaHei";
+}
+
+table.price {
+	text-align: center;
+	border-color: black;
+	border-style: none none solid solid;
+	border-width: 1px;
+}
+
+th.price {
+	text-align: center;
+	border-color: black;
+	border-style: solid solid none none;
+	border-width: 1px;
+	background: lightcyan;
+	font-size: 1.0em;
+}
+
+td.price {
+	text-align: center;
+	border-color: black;
+	border-style: solid solid none none;
+	border-width: 1px;
+}
+
+td.tab {
+	text-align: center;
+	border-color: black;
+	border-style: solid;
+	border-width: 1px;
+	background: lightgrey;
+	font-size: 1.0em;
+}
+
+td.tab1 {
+	text-align: center;
+	border-color: black;
+	border-style: none none solid none;
+	border-width: 1px;
+}
+
+tt {
+	font-size: 1.0em;
+}
+
+table {
+	
+}
+
+.radio input {
+	width: 15px;
+	height: 15px;
+}
+
+.ahover {
+	color: #FFFFFF;
+}
+</style>
+<body>
+	<div style="width: 1400px;">
+		<table width="200px" border="0">
+			<tbody>
+				<tr>
+					<td align="right">交易类型: &nbsp;</td>
+					<td align="left"><font style="color: blue;">FX_OPTN</font>
+						&nbsp;</td>
+				</tr>
+			</tbody>
+		</table>
+		<br>
+
+		<table class='head' width="800px" height="23px" border="0">
+			<tr>
+				<td align="right">版本日区间 &nbsp;</td>
+				<td align="left"><input type="text" name="VerStaDate"
+					value="2017-04-18" style="width: 98px; text-align: left;">
+				</td>
+				<td align="left"><input type="text" name="VerEndDate"
+					value="2017-04-25"
+					style="width: 98px; font-size: 95%; text-align: left;"></td>
+				<td align="right" class="radio">ALL<input type="radio"
+					id="radio0" name="verradio" value="0">&nbsp;LAST<input
+					type="radio" id="radio1" name="verradio" value="1"></td>
+				<td>&nbsp;</td>
+
+				<td align="left"><input type="button" id="reflash" value="刷新"
+					style="font-size: 90%; height: 23px;"></td>
+				<td align="left"><input type="button" id="cleancache"
+					value="CleanCache" style="font-size: 90%; height: 23px;"></td>
+				<td></td>
+			</tr>
+		</table>
+		<p>
+		<table class="price" width="100%" border="1" cellspacing="0"
+			cellpadding="0">
+			<tbody>
+				<tr height="30px" style="background: lightcyan; font-size: 0.9em;">
+					<td>#</td>
+					<td>交易编号</td>
+					<td>版本号</td>
+					<td>状态</td>
+					<td>更改日期</td>
+					<td>部门</td>
+					<td width="200px">交易处室</td>
+					<td>账户</td>
+					<td>市场</td>
+					<td>StaDate</td>
+					<td>EndDate</td>
+					<td>标的商品</td>
+					<td>提前终止日</td>
+				</tr>
+
+				<c:forEach items="${deallist }" var="d" varStatus="s">
+					<c:choose>
+						<c:when test="${s.count % 2 == 0 }">
+							<tr height="25px"
+								style="background: lightyellow; font-size: 0.9em;">
+						</c:when>
+						<c:otherwise>
+							<tr height="25px"
+								style="background: lightgray; font-size: 0.9em;">
+						</c:otherwise>
+					</c:choose>
+
+					<td>${s.count}</td>
+					<td><a href="#" id="${d.id }">${d.dealId }</a></td>
+					<td class="${d.dealId }"
+						style="text-align: left; padding-left: 10px;">${d.version }</td>
+					<td class="${d.id }" style="text-align: left; padding-left: 10px;">${d.status }</td>
+					<td>${d.verDate }</td>
+					<td>${d.comp }</td>
+					<td width="150px">${d.desk }</td>
+					<td>${d.book }</td>
+					<td>${d.market }</td>
+					<td>${d.staDate }</td>
+					<td>${d.endDate }</td>
+					<td style="text-align: right; padding-right: 10px;">${d.notional }</td>
+					<td>${d.unwind }</td>
+					</tr>
+				</c:forEach>
+			</tbody>
+		</table>
+	</div>
+</body>
+<script>
+    var color;
+
+    $(function() {
+
+	var o = GetQueryString("option");
+
+	$("#radio" + o).attr("checked", "checked");
+
+	$("a").click(function() {
+	    var id = $(this).attr("id");
+	    findDetail(id);
+	})
+
+	$("a").hover(function() {
+	    color = $(this).parent().parent().css("background")
+	    console.log(color)
+	    $(this).parent().parent().addClass("ahover");
+	    $(this).parent().parent().css("background", "#000000");
+	    $(this).css("color", "yellow")
+	}, function() {
+	    console.log("blur")
+	    $(this).parent().parent().removeClass("ahover");
+	    $(this).parent().parent().css("background", color);
+	    $(this).css("color", "blue")
+	});
+
+	$("#cleancache").click(function() {
+	    localStorage.clear()
+	})
+
+	$("#reflash")
+		.click(
+			function() {
+
+			    var option;
+
+			    //alert($("input[name='verradio']:checked").val())
+
+			    $("input[name='verradio']:checked").val() == undefined ? option = "1"
+				    : option = $(
+					    "input[name='verradio']:checked")
+					    .val();
+
+			    location.href = "/deri-web/eqcmController.do?finddeallist&option="
+				    + option;
+
+			});
+
+    });
+
+    function GetQueryString(name) {
+	var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+	var r = window.location.search.substr(1).match(reg);
+	if (r != null)
+	    return unescape(r[2]);
+	return null;
+    }
+
+    function findDetail(id) {
+
+	window.opener.location.href = "/deri-web/eqcmController.do?findDealById&id="
+		+ id
+
+	window.close();
+
+    }
+</script>

@@ -1,0 +1,464 @@
+﻿<!-- daniel create at 2018-05-04-->
+<%@ page language="java" import="java.util.*"
+	contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@include file="/webpage/com/finanstar/header.jsp"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title>${j.batchType }Report</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link media="screen" rel="stylesheet"
+	href="/deri-web/plug-in/finanstar/css/htmlDatePicker.css" />
+<script type="text/javascript"
+	src="/deri-web/plug-in/finanstar/js/htmlDatePicker.js"></script>
+<script type="text/javascript"
+	src="/deri-web/plug-in/jquery/jquery-1.8.3.js"></script>
+<style type="text/css">
+td {
+	border: solid black;
+	border-width: 0px 1px 1px 0px;
+	padding: 10px 0px;
+}
+
+table {
+	width: 2430px;
+	border: solid black;
+	border-width: 1px 0px 0px 1px;
+	border: solid black;
+}
+
+.sum td {
+	background: lightgreen;
+	font-size: 0.9em;
+	text-align: center;
+}
+
+.head td {
+	background: lightcyan;
+	font-size: 0.9em;
+	text-align: center;
+	height: 20px;
+	width: 120px;
+}
+
+.btt font {
+	margin-left: 30px;
+	font-size: 1.5em;
+	color: blue;
+}
+
+select {
+	height: 30px;
+	width: 120px;
+	background: orange;
+	line-height: 25px;
+}
+
+.btt input {
+	height: 28px;
+	width: 120px;
+	background: orange;
+	line-height: 25px;
+	margin-left: 20px;
+}
+
+.report {
+	margin-top: 30px;
+}
+
+.btt {
+	width: 2430px;
+	margin-top: 50px;
+}
+
+.title {
+	font-size: 2em;
+	font-family: arial, 'hiragino sans gb', 'microsoft yahei', 'Simsun',
+		sans-serif;
+	color: blue;
+	font-weight: bold;
+}
+
+.tbody {
+	height: 20px;
+	font-size: 0.9em;
+}
+
+.tbody td {
+	padding-left: 20px;
+}
+</style>
+</head>
+<body>
+	<div class="btt">
+		<textarea id="optionjson" hidden="true">${j.optionjson }</textarea>
+		<textarea id="optiondeful" hidden="true">${j.ro.comp },${j.ro.desk },${j.ro.book },${j.ro.market },${j.ro.valueDate }</textarea>
+		<div style="margin-left: 520px;">
+			<h1 class="title">${j.reportname }</h1>
+		</div>
+		<form action="fxFxoEntityController.do?toreport&batchType=PNL"
+			method="post">
+			<div style="margin-top: 30px; margin-left: 50px;">
+				<font> 部门: &nbsp; </font> <select id='1' name='comp'
+					style='width: 150px; font-size: 0.9em;'
+					onchange="O(ActionPNL).value='ChangeComp'; this.form.submit()">
+				</select> <font> 交易处室: &nbsp; </font> <select id='2' name='desk'
+					style='width: 150px; font-size: 0.9em;'
+					onchange="O(ActionPNL).value='ChangeDesk'; this.form.submit()">
+				</select> <font> 账户: &nbsp; </font> <select id='3' name='book'
+					style='width: 150px; font-size: 0.9em;'
+					onchange="O(ActionPNL).value='ChangeBook'; this.form.submit()">
+				</select> <font> 市场: &nbsp; </font> <select id='4' name='market'
+					style='width: 150px; font-size: 0.9em;'
+					onchange="O(ActionPNL).value='ChangeMarket'; this.form.submit()">
+				</select> <font> 报告日期: &nbsp; </font> <select id='5' name='valueDate'
+					style='width: 120px; font-size: 0.9em;'
+					onchange="O(ActionPNL).value='ChangeDate'; this.form.submit()">
+				</select> <input type="submit" value="刷新" />
+			</div>
+		</form>
+	</div>
+	<div class="report">
+		<table class="price" border="1" cellspacing="0" cellpadding="0">
+			<tr height="20px" class="sum">
+				<td>合计</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td id="4H0"></td>
+				<td>&nbsp;</td>
+				<td id="6H0"></td>
+				<td id="7H0"></td>
+				<td id="8H0"></td>
+				<td id="9H0"></td>
+				<td id="10H0"></td>
+				<td id="11H0"></td>
+				<td id="12H0"></td>
+				<td id="13H0"></td>
+				<td id="14H0"></td>
+				<td id="15H0"></td>
+				<td id="16H0"></td>
+				<td id="17H0"></td>
+				<td id="18H0"></td>
+				<td id="19H0"></td>
+				<td id="20H0"></td>
+				<td>&nbsp;</td>
+			</tr>
+			${titl }
+			<tr height="30px" class="head">
+				<c:forEach items="${titl }" var="h">
+					<td>h</td>
+				</c:forEach>
+			</tr>
+			<c:forEach items="${j.list }" var="v" varStatus="s">
+				<c:choose>
+					<c:when test="${s.count % 2 == 0 }">
+						<tr class="tbody" style="background: lightyellow;">
+							<td
+								style='background: lightcyan; font-size: 0.9em; padding-left: 0; text-align: center;'>${s.count}</td>
+							<c:forEach items="${v }" var="t" varStatus="ss">
+								<td class="${ss.count+1 }data">${t }</td>
+							</c:forEach>
+						</tr>
+					</c:when>
+					<c:otherwise>
+						<tr class="tbody" style="background: lightyellow;">
+							<td
+								style='background: lightcyan; font-size: 0.9em; padding-left: 0; text-align: center;'>${s.count}</td>
+							<c:forEach items="${v }" var="t" varStatus="ss">
+								<td class="${ss.count+1 }data">${t }</td>
+							</c:forEach>
+						</tr>
+					</c:otherwise>
+				</c:choose>
+			</c:forEach>
+		</table>
+	</div>
+</body>
+
+<script type="text/javascript">
+  /* 
+   金融市场部@人民币汇率交易处@FX_CNY_A@USDCNY@20170425
+   金融市场部@人民币汇率交易处@FX_CNY_B@USDCNY@20170425
+   金融市场部@人民币汇率交易处@FX_CNY_C@USDCNY@20170425
+   金融市场部@人民币汇率交易处@FX_CNY_D@USDCNY@20170425
+   金融市场部@外币汇率交易处@FX_DERIVS@USDCNY@20170425
+   金融市场部@外币汇率交易处@FX_DERIVS_1@USDCNY@20170425
+   金融市场部@外币汇率交易处@FX_DERIVS_2@USDCNY@20170425
+   金融市场部@欧元汇率交易处@FX_EUR_A@USDCNY@20170425
+   金融市场部@欧元汇率交易处@FX_EUR_B@USDCNY@20170425
+   金融市场部@欧元汇率交易处@FX_EUR_C@USDCNY@20170425
+   金融市场部@欧元汇率交易处@FX_EUR_D@USDCNY@20170425
+  {"金融市场部":
+  {"人民币汇率交易处":
+  {"FX_CNY_D":{"USDCNY":{"20170425":{}}},
+  "FX_CNY_C":{"USDCNY":{"20170425":{}}},
+  "FX_CNY_B":{"USDCNY":{"20170425":{}}},
+  "FX_CNY_A":{"USDCNY":{"20170425":{}}}},
+  "外币汇率交易处":{"FX_DERIVS_2":{"USDCNY":{"20170425":{}}},"FX_DERIVS_1":{"USDCNY":{"20170425":{}}},"FX_DERIVS":{"USDCNY":{"20170425":{}}}},"欧元汇率交易处":{"FX_EUR_A":{"USDCNY":{"20170425":{}}},"FX_EUR_D":{"USDCNY":{"20170425":{}}},"FX_EUR_C":{"USDCNY":{"20170425":{}}},"FX_EUR_B":{"USDCNY":{"20170425":{}}}}}}
+   */
+
+  var oj = JSON.parse($("#optionjson").html());
+  var optiondeful = $("#optiondeful").html().split(",");
+  var childwindow = [];
+
+  $(function() {
+
+    /*      for ( var i in optiondeful) {
+     var j = parseInt(i) + 1;
+     if (i == optiondeful.length - 1) {
+     var k = optiondeful[i];
+     var kk = k.substring(0, 4) + "-" + k.substring(4, 6) + "-"
+     + k.substring(6, 8);
+     $("#" + j).append(
+     "<option selected='true' value='"+optiondeful[i]+"'>" + kk+ "</option>")
+     } else {
+     var html = "<option selected='true' value='"+optiondeful[i]+"'>"
+     + optiondeful[i] + "</option>"
+     $("#" + j).html(html);
+     } 
+     } */
+
+    initOption()
+
+    $("select").bind(
+            "blur change",
+            function() {
+
+              var tv = $(this).val();
+
+              var id = $(this).attr("id")
+
+              id = parseInt(id);
+
+              var va = [];
+              var j = oj;
+
+              for (var i = 1; i < id; i++) {
+                va.push($("#" + i).val());
+              }
+
+              for ( var obj in va) {
+                j = j[va[obj]];
+              }
+
+              j = j[tv]
+
+              for (var ii = id + 1; ii <= 5; ii++) {
+
+                var oph = "";
+
+                var v = []
+
+                var num = 0;
+                for ( var k in j) {
+
+                  v.push(k)
+                  num++;
+                  var op;
+                  if (!isNaN(parseInt(k))) {
+
+                    var kk = k.substring(0, 4) + "-" + k.substring(4, 6) + "-"
+                            + k.substring(6, 8);
+
+                    oph += "<option value='"+k+"'>" + kk + "</option>"
+                  } else {
+                    oph += "<option value='"+k+"'>" + k + "</option>"
+
+                  }
+                }
+                j = j[v[0]]
+
+                $("#" + ii).html(oph)
+              }
+
+            })
+
+    /*     $("select").click(
+     function() {
+     var cv = $(this).val()
+     var cid = $(this).attr("id")
+     var va = [];
+     var j = oj;
+
+     for (var i = 1; i < cid; i++) {
+     va.push($("#" + i).val());
+     }
+
+     for ( var obj in va) {
+     j = j[va[obj]];
+     }
+
+     //alert(JSON.stringify(j))
+     var p = $(this)
+     p.empty();
+
+     var oph = "";
+
+     var num = 0;
+     for ( var k in j) {
+     num++;
+     var op;
+     if (va.length == 4) {
+
+     var kk = k.substring(0, 4) + "-" + k.substring(4, 6) + "-"
+     + k.substring(6, 8);
+
+     if (k == cv) {
+     oph += "<option selected='true'  value='"+k+"'>" + kk
+     + "</option>"
+     } else
+     oph += "<option value='"+k+"'>" + kk + "</option>"
+     } else {
+
+     if (k == cv) {
+     oph += "<option selected='true'  value='"+k+"'>" + k
+     + "</option>"
+     } else
+     oph += "<option value='"+k+"'>" + k + "</option>"
+     }
+
+     //op.appendTo(p)
+     console.log(k);
+     }
+
+     console.log(oph);
+
+     p.html(oph);
+
+     //p.attr("size",20);
+
+     //p.focus();
+
+     //alert($(this).val()+":"+$(this).attr("id"));
+
+     }); */
+
+    //合计
+    calculate()
+
+  });
+
+  function initOption() {
+
+    $("#1").append(
+            "<option selected='true' value='"+optiondeful[0]+"'>"
+                    + optiondeful[0] + "</option>")
+
+    var tv = optiondeful[0]
+
+    var id = 1
+
+    id = parseInt(id);
+
+    var va = [];
+    var j = oj;
+
+    for (var i = 1; i < id; i++) {
+      va.push($("#" + i).val());
+    }
+
+    for ( var obj in va) {
+      j = j[va[obj]];
+    }
+
+    j = j[tv]
+
+    for (var ii = id + 1; ii <= 5; ii++) {
+
+      var oph = "";
+
+      var v = []
+
+      var num = 0;
+      for ( var k in j) {
+
+        v.push(k)
+        num++;
+        var op;
+        if (!isNaN(parseInt(k))) {
+
+          var kk = k.substring(0, 4) + "-" + k.substring(4, 6) + "-"
+                  + k.substring(6, 8);
+
+          oph += "<option value='"+k+"'>" + kk + "</option>"
+        } else {
+          oph += "<option value='"+k+"'>" + k + "</option>"
+
+        }
+      }
+      j = j[optiondeful[ii - 1]]
+
+      $("#" + ii).html(oph)
+    }
+
+    //确保准确性
+    for ( var j in optiondeful) {
+      var jj = parseInt(j) + 1;
+      $("#" + jj).val(optiondeful[j])
+    }
+
+  }
+
+  function queryDeal() {
+    if (childwindow['ql'] != undefined) childwindow['ql'].close();
+    childwindow['ql'] = window
+            .open("/deri-web/fxController.do?finddeallist&option=1&newwindow=true");
+  }
+
+  function calculate() {
+
+    // i j
+
+    var cA = [4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
+    for ( var i in cA) {
+      var num = cA[i]
+
+      var e = $("." + num + "data");
+
+      var sum = 0.00;
+
+      for (var j = 0; j < e.length; j++) {
+        sum += parseFloat(e.eq(j).text())
+      }
+
+      sum = formatNumber(sum, 2, true);
+
+      $("#" + String(num) + "H0").html(sum);
+
+    }
+
+  }
+
+  function formatNumber(num, cent, isThousand) {
+
+    num = num.toString().replace(/\$|\,/g, '');
+
+    // 检查传入数值为数值类型
+    if (isNaN(num)) num = "0";
+
+    // 获取符号(正/负数)
+    sign = (num == (num = Math.abs(num)));
+
+    num = Math.floor(num * Math.pow(10, cent) + 0.50000000001); // 把指定的小数位先转换成整数.多余的小数位四舍五入
+    cents = num % Math.pow(10, cent); // 求出小数位数值
+    num = Math.floor(num / Math.pow(10, cent)).toString(); // 求出整数位数值
+    cents = cents.toString(); // 把小数位转换成字符串,以便求小数位长度
+
+    // 补足小数位到指定的位数
+    while (cents.length < cent)
+      cents = "0" + cents;
+
+    if (isThousand) {
+      // 对整数部分进行千分位格式化.
+      for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+        num = num.substring(0, num.length - (4 * i + 3)) + ','
+                + num.substring(num.length - (4 * i + 3));
+    }
+
+    if (cent > 0)
+      return (((sign) ? '' : '-') + num + '.' + cents);
+    else
+      return (((sign) ? '' : '-') + num);
+  }
+</script>

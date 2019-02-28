@@ -1,0 +1,202 @@
+var j = window.opener.outj;
+
+var inj = window.opener.inj;
+
+var Market0 = j.CurveSet.Curve0.Market
+var Market1 = j.CurveSet.Curve1.Market
+var Method = j.CurveSet.Curve1.Method
+var DealId = j.DealSet['Deal.0'].DealId
+var StaDate0 = j.CurveSet.Curve0.StaDate
+var StaDate1 = j.CurveSet.Curve1.StaDate
+var Interp = j.CurveSet.Curve1.Interp;
+
+var mv=j.ModelPair.Model.MarketVol
+
+var VolMarket=mv.Market
+var VolStaDate = mv.StaDate
+var VolType = mv.VolType
+var InstType = mv.InstType
+
+$(function() {
+	
+	console.log(inj)
+
+	$("#Market0").html(Market0)
+	$("#Market1").html(Market1)
+	$("#Method").html(Method)
+	$("#DealId").html(DealId)
+	$("#StaDate0").html(formatDate(StaDate0))
+	$("#StaDate1").html(formatDate(StaDate1))
+	$("#Interp").html(Interp)
+	$("#VolMarket").html(VolMarket)
+	$("#VolStaDate").html(formatDate(VolStaDate))
+	$("#VolType").html(VolType)
+	$("#InstType").html(InstType)
+	
+	
+	//市场1 左表 use inj
+	var ic=inj.CurveDefine.CrvDef0.Instr;
+	
+	
+	
+	for (var i = 0; i < parseInt(ic.Num); i++) {
+		var k = "P." + i
+		
+		var cm=ic[k].split('~');
+		
+		
+		html="<tr height='25px'>" +
+				"<td style='text-align:center;'>"+(i+1)+"</td>" +
+				"<td>"+cm[0]+"</td>" +
+				"<td><input class="+cm[0]+" name='data' type='text' id='"+cm[1]+"' value='"+cm[1]+"'></td>" +
+				"<td style='text-align:center;'>H</td></tr>"
+		
+
+		$("#tL0").append(html)
+		
+
+	}
+	//市场2 左表 use inj
+	ic=inj.CurveDefine.CrvDef1.Instr;
+	
+	
+	
+	for (var i = 0; i < parseInt(ic.Num); i++) {
+		var k = "P." + i
+		
+		var cm=ic[k].split('~');
+		
+		
+		html="<tr height='25px'>" +
+		"<td style='text-align:center;'>"+(i+1)+"</td>" +
+		"<td>"+cm[0]+"</td>" +
+		"<td><input class="+cm[0]+" name='data' type='text' id='"+cm[1]+"' value='"+cm[1]+"'></td>" +
+		"<td style='text-align:center;'>H</td></tr>"
+		
+		
+		$("#tL1").append(html)
+		
+		
+	}
+	
+	//市场1 右表 outj
+	var oc=j.CurveSet.Curve0.Eqcm;
+	
+	
+	
+	for (var i = 0; i < parseInt(oc.Num); i++) {
+		var k = "P." + i
+		
+		var cm=oc[k].split('~');
+		
+		if(i%2==0){
+			html="<tr height='25px'>" +
+			"<td style='text-align:center;background: lightgray;'>"+cm[0]+"</td>" +
+			"<td style='text-align:center;background: lightgray;'>"+cm[1]+"</td>" +
+			"<td style='text-align:center;background: lightgray;'>"+formatDate(cm[2])+"</td></tr>"
+		}else{
+	    	html="<tr height='25px'>" +
+				"<td style='text-align:center;'>"+cm[0]+"</td>" +
+				"<td style='text-align:center;'>"+cm[1]+"</td>" +
+				"<td style='text-align:center;'>"+formatDate(cm[2])+"</td></tr>"
+		}
+
+		$("#tR0").append(html)
+
+	}
+	 oc=j.CurveSet.Curve1.Zcdf;
+	
+	
+	
+	for (var i = 0; i < parseInt(oc.Num); i++) {
+		var k = "P." + i
+		
+		var cm=oc[k].split('~');
+		
+		var html;
+		
+		if(i%2==0){
+			html="<tr height='25px' >" +
+			"<td style='text-align:center;background: lightgray;'>"+cm[0]+"</td>" +
+			"<td style='text-align:center;background: lightgray;'>"+cm[1]+"</td>" +
+			"<td style='text-align:center;background: lightgray;'>"+cm[2]+"</td>" +
+			"<td style='text-align:center;background: lightgray;'>"+cm[3]+"</td></tr>"	
+		}else{
+		html="<tr height='25px'>" +
+		"<td style='text-align:center;'>"+cm[0]+"</td>" +
+		"<td style='text-align:center;'>"+cm[1]+"</td>" +
+		"<td style='text-align:center;'>"+cm[2]+"</td>" +
+		"<td style='text-align:center;'>"+cm[3]+"</td></tr>"
+		}
+		
+		
+		$("#tR1").append(html)
+		
+		
+	}
+	
+	
+	
+	
+	
+	
+	
+
+	/* $("#view").html(localStorage.getItem('init.'+GetQueryString("id"))) */
+	$("title").html("环境：" + GetQueryString("id"))
+	$("#a").hide();
+	$(".table").hide();
+	$(".out").hide();
+	$(".env").show();
+});
+
+function GetQueryString(name) {
+	var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+	var r = window.location.search.substr(1).match(reg);
+	if (r != null)
+		return unescape(r[2]);
+	return null;
+}
+
+/** format float and thousand. */
+function formatNumber(num, cent, isThousand) {
+
+	num = num.toString().replace(/\$|\,/g, '');
+
+	// 检查传入数值为数值类型
+	if (isNaN(num))
+		num = "0";
+
+	// 获取符号(正/负数)
+	sign = (num == (num = Math.abs(num)));
+
+	num = Math.floor(num * Math.pow(10, cent) + 0.50000000001); // 把指定的小数位先转换成整数.多余的小数位四舍五入
+	cents = num % Math.pow(10, cent); // 求出小数位数值
+	num = Math.floor(num / Math.pow(10, cent)).toString(); // 求出整数位数值
+	cents = cents.toString(); // 把小数位转换成字符串,以便求小数位长度
+
+	// 补足小数位到指定的位数
+	while (cents.length < cent)
+		cents = "0" + cents;
+
+	if (isThousand) {
+		// 对整数部分进行千分位格式化.
+		for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+			num = num.substring(0, num.length - (4 * i + 3)) + ','
+					+ num.substring(num.length - (4 * i + 3));
+	}
+
+	if (cent > 0)
+		return (((sign) ? '' : '-') + num + '.' + cents);
+	else
+		return (((sign) ? '' : '-') + num);
+}
+
+function formatDate(v) {
+	var s = "-"
+	var y = v.substring(0, 4);
+	var m = v.substring(4, 6);
+	var d = v.substring(6, 8);
+	v = y + s + m + s + d;
+	return v;
+}

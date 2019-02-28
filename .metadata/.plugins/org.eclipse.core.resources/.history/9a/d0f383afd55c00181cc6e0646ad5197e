@@ -1,0 +1,1473 @@
+package com.finanstar.util.common;
+
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.reflect.Method;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.commons.lang.text.StrTokenizer;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
+
+/* import com.finanstar.fx.util.json.Json; */
+import com.finanstar.util.common.json.Json;
+
+import net.sf.json.JSONObject;
+
+import com.finanstar.interestrateresetsequence.entity.InterestRateResetSequenceEntity;
+import com.finanstar.paysched.entity.PaySchedEntity;
+import com.finanstar.resetsched.entity.ResetSchedEntity;
+
+public class Util {
+  /**
+   * Logger for this class
+   */
+  private static final Logger logger = Logger.getLogger(Util.class);
+  public static final String _255 = "(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)";
+  public static final Pattern pattern = Pattern.compile("^(?:" + _255 + "\\.){3}" + _255 + "$");
+
+  private static final String TILESTR_STRING =
+      "Title : \"EndDate~PayDate~YearFrac~Notional~FixRate~Index~PerdRate~Payment~Zcdf~PV~Accr~FX\",";
+
+  public static String getRandom(int len) {
+    return (Math.random() + "").replaceAll("[.0*]", "").substring(0, len);
+  }
+
+
+  public static JSONObject transBean2Map(Object obj) {
+    if (obj == null) {
+      return null;
+    }
+    JSONObject json = new JSONObject();
+    try {
+      BeanInfo beanInfo = Introspector.getBeanInfo(obj.getClass());
+      PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
+      for (PropertyDescriptor property : propertyDescriptors) {
+        String key = property.getName();
+        // 过滤class属性
+        if (!key.equals("class")) {
+          // 得到property对应的getter方法
+          Method getter = property.getReadMethod();
+          Object value = getter.invoke(obj);
+          if (value != null) {
+            json.put(key, value);
+          }
+        }
+
+      }
+    } catch (Exception e) {
+    }
+    return json;
+
+  }
+
+
+
+  /**
+   * 解析计算后的json字符串
+   * 
+   * @param jsonOutStr
+   * @return 返回支付序列集合
+   */
+  /*
+   * public static List<PaySchedEntity> getPaySchedList(String jsonOutStr, String startDate) {
+   * List<PaySchedEntity> paySchedEntities = new ArrayList<PaySchedEntity>(); String[] swapLeg0 =
+   * getSwapLeg0(jsonOutStr, "SwapLeg0 : {", TILESTR_STRING); for (int i = 0; i < swapLeg0.length;
+   * i++) { if (i == 0) { paySchedEntities.add(new PaySchedEntity(startDate,
+   * produceDateStr(swapLeg0[i].split("~")[0]), produceDateStr(swapLeg0[i].split("~")[1]),
+   * swapLeg0[i] .split("~")[2], swapLeg0[i].split("~")[3], swapLeg0[i].split("~")[4],
+   * swapLeg0[i].split("~")[5], swapLeg0[i].split("~")[6], swapLeg0[i].split("~")[7],
+   * swapLeg0[i].split("~")[8], swapLeg0[i].split("~")[9]));
+   * 
+   * } else { paySchedEntities.add(new PaySchedEntity(
+   * 
+   * produceDateStr(swapLeg0[i - 1].split("~")[1]), produceDateStr(swapLeg0[i].split("~")[0]),
+   * produceDateStr(swapLeg0[i].split("~")[1]), swapLeg0[i] .split("~")[2],
+   * swapLeg0[i].split("~")[3], swapLeg0[i].split("~")[4], swapLeg0[i].split("~")[5],
+   * swapLeg0[i].split("~")[6], swapLeg0[i].split("~")[7], swapLeg0[i].split("~")[8],
+   * swapLeg0[i].split("~")[9]));
+   * 
+   * } } return paySchedEntities; }
+   */
+  public static List<String> getPaySchedList(String jsonOutStr, String startDate, int isY) {
+    List<String> paySched = new ArrayList<String>();
+    String sched = "";
+    String[] swapLeg0 = getSwapLeg0(jsonOutStr, "SwapLeg0 : {", TILESTR_STRING, isY);
+    for (int i = 0; i < swapLeg0.length; i++) {
+      if (i == 0) {
+        sched = startDate + "~" + swapLeg0[i];
+
+      } else {
+        sched = swapLeg0[i - 1].split("~")[0] + "~" + swapLeg0[i];
+
+      }
+      paySched.add(sched);
+    }
+    return paySched;
+  }
+
+  public static void main(String[] args) throws IOException {
+    String name = null;
+    String dir = null;
+    String begin = null;
+    String end = null;
+
+    // 2018-05-14
+
+    name = "dce";
+    name = "cffex";
+    name = "cmc";
+    
+    
+    name = "cm";
+    name = "czce";
+    name = "shfe";
+
+
+    runPy("C:\\PyProject", name, "20180518");
+
+
+
+  }
+
+  public static int runPy(String dir, String type, String date) {
+    StringBuffer bat = new StringBuffer();
+    bat.append("@echo off \n");
+    bat.append("C: \n");
+    bat.append("cd "+dir + " \n");
+    bat.append("python %cd%/CE_Crawler/dojob.py " + type + " %cd% " + date + " \n");
+    // bat.append("exit \n");
+    File bf = new File("crawler-data.bat");
+    BufferedWriter out;
+    try {
+      out = new BufferedWriter(new FileWriter(bf));
+      out.write(bat.toString());
+      out.flush();
+    } catch (IOException e1) {
+      e1.printStackTrace();
+    }
+    int i = -1;// 运行结果
+    Process process = null;
+    try {
+      // Runtime.getRuntime()返回当前应用程序的Runtime对象
+      // Process可以控制该子进程的执行或获取该子进程的信息。
+      // exec()方法指示Java虚拟机创建一个子进程执行指定的可执行程序，并返回与该子进程对应的Process对象实例。
+      // process = Runtime.getRuntime().exec("cmd.exe /c start /b bat.bat");
+      process = Runtime.getRuntime().exec("cmd.exe /c start  crawler-data.bat ");
+      BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+      String line = null;
+      while ((line = in.readLine()) != null) {
+        logger.info("> "+line);
+        if(line.contains("ok")) {
+          Runtime.getRuntime().exec("notepad "+dir+"\\"+type+"\\"+line.split(" ")[0]);
+        }
+      }
+      in.close();
+      i = process.waitFor(); //// 等待子进程完成再往下执行。
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (process != null) {
+        process.destroy();
+      }
+    }
+    if (i == 0) {
+
+      System.out.println("Batch Execute Completed.");
+    } else {
+      System.err.println("Batch Execute Failed.");
+    }
+
+    return i;
+  }
+
+
+  /**
+   * 解析计算后的json字符串
+   * 
+   * @param jsonOutStr
+   * @return 返回收取序列集合
+   */
+  public static List<String> getResetSchedList(String jsonOutStr, String startDate,
+      String thisSwapleg, int isY) {
+    List<String> resetSched = new ArrayList<String>();
+    String sched = "";
+    String[] swapLeg0 = getSwapLeg1(jsonOutStr, thisSwapleg, TILESTR_STRING, isY);
+    for (int i = 0; i < swapLeg0.length; i++) {
+      if (i == 0) {
+        sched = startDate + "~" + swapLeg0[i];
+
+      } else {
+        sched = swapLeg0[i - 1].split("~")[0] + "~" + swapLeg0[i];
+
+      }
+      resetSched.add(sched);
+    }
+    return resetSched;
+
+  }
+
+  /**
+   * 获取SwapLeg0的数据
+   * 
+   * @param jsonOutStr 计算后的json字符串
+   * @param SwapLegStr 选择截取SwapLeg0或SwapLeg1的数据
+   * @param tileStr tile截取
+   * @return
+   */
+
+  public static String[] getSwapLeg0(String jsonOutStr, String SwapLegStr, String tileStr,
+      int isY) {
+    // 获取SwapLeg级的数据
+    String substringBetween = "";
+    if (isY == 0) {
+      substringBetween = StringUtils.substringBetween(jsonOutStr, SwapLegStr, "},");
+      substringBetween = StringUtils.substringAfter(substringBetween, tileStr);
+
+    } else {
+      substringBetween = StringUtils.substringBetween(jsonOutStr, SwapLegStr, "},");
+      substringBetween = StringUtils.substringBetween(substringBetween, tileStr, "}");
+
+    }
+    // 获取title下的数据
+
+
+    // 对获取的数据进行拆分
+    System.out.println("substringBetween：" + substringBetween);
+    String[] split = substringBetween.split(",");
+    // 移除不需要的数据
+    String[] split2 = new String[split.length - 1];
+    for (int i = 1; i < split.length; i++) {
+      split2[i - 1] = split[i];
+    }
+    // 提取“”中的信息
+    for (int i = 0; i < split2.length; i++) {
+      split2[i] = StringUtils.substringBetween(split2[i], "\"", "\"");
+    }
+    // 去除空格，换行，制表符
+    for (int i = 0; i < split2.length; i++) {
+      split2[i] = replaceBackStr(split2[i]);
+    }
+    return split2;
+  }
+
+
+
+  /**
+   * 处理日期字符串 如：20130101>2013-01-01
+   * 
+   * @param dateStr 要处理的字符串
+   * @return
+   */
+  public static String produceDateStr(String dateStr) {
+    StringBuffer sb = new StringBuffer(dateStr);
+    sb = sb.insert(4, "-");
+    sb = sb.insert(7, "-");
+    return sb.toString();
+
+  }
+
+  /**
+   * 获取Swapleg1中sched数据
+   * 
+   * @param jsonOutStr
+   * @param SwapLegStr
+   * @param tileStr
+   * @return
+   */
+  public static String[] getSwapLeg1(String jsonOutStr, String SwapLegStr, String tileStr,
+      int isY) {
+    // 获取SwapLeg级的数据
+    String substringBetween = "";
+    if (isY == 0) {
+      substringBetween = StringUtils.substringBetween(jsonOutStr, SwapLegStr, " Outcome : {");
+      substringBetween = StringUtils.substringBetween(substringBetween, tileStr, "}");
+
+    } else {
+      substringBetween = StringUtils.substringBetween(jsonOutStr, SwapLegStr, "ResetSched : {");
+      substringBetween = StringUtils.substringBetween(substringBetween, tileStr, "},");
+
+    }
+    // 获取title下的数据
+
+    // 对获取的数据进行拆分
+    String[] split = substringBetween.split(",");
+    // 移除不需要的数据
+    String[] split2 = new String[split.length - 1];
+    for (int i = 1; i < split.length; i++) {
+      split2[i - 1] = split[i];
+    }
+    // 提取“”中的信息
+    for (int i = 0; i < split2.length; i++) {
+      split2[i] = StringUtils.substringBetween(split2[i], "\"", "\"");
+    }
+
+    return split2;
+  }
+
+  /*
+   * public static List<InterestRateResetSequenceEntity> getReset(String jsonOutStr) {
+   * List<InterestRateResetSequenceEntity> interestRateResetSequenceEntities = new
+   * ArrayList<InterestRateResetSequenceEntity>(); // 得到ResetSched : {}中的数据 String substringBetween
+   * = StringUtils.substringBetween(jsonOutStr, "ResetSched : {", " Outcome : {"); String numPerd =
+   * StringUtils.substringBetween(substringBetween, "NumPerd : \"", "\","); Integer i = new
+   * Integer(numPerd);
+   * 
+   * String[] strResetSched = new String[i]; // 得到reset.的数据 for (int j = 0; j < i; j++) { String
+   * resetNumStr = "Reset." + j + " : {"; strResetSched[j] =
+   * StringUtils.substringBetween(substringBetween, resetNumStr, "}"); } // 得到reset.中的数据 for (String
+   * strReset : strResetSched) { String accrSta = StringUtils.substringBetween(strReset,
+   * "AccrSta : \"", "\","); String accrEnd = StringUtils.substringBetween(strReset, "AccrEnd : \"",
+   * "\","); Integer num = new Integer(StringUtils.substringBetween(strReset, "Num : \"", "\","));
+   * String[] rStrs = new String[num];
+   * 
+   * // 得到了R.0：“”中的数据 for (int j = 0; j < num; j++) { String r = "R." + j + " : \""; rStrs[j] =
+   * StringUtils.substringBetween(strReset, r, "\""); } for (int j = 0; j < rStrs.length; j++) { //
+   * 开始组装对象并存到集合中 interestRateResetSequenceEntities .add(new InterestRateResetSequenceEntity(
+   * produceDateStr(accrSta), produceDateStr(accrEnd), produceDateStr(rStrs[j].split("~")[0]),
+   * produceDateStr(rStrs[j].split("~")[1]), rStrs[j].split("~")[3], rStrs[j].split("~")[2])); } }
+   * 
+   * System.out.println("JsonUtil"+interestRateResetSequenceEntities);
+   * 
+   * return interestRateResetSequenceEntities;
+   * 
+   * }
+   */
+  public static Map<String, List<String>> getReset(String jsonOutStr, String swapleg) {
+    // 得到ResetSched : {}中的数据
+    String substringBetween = "";
+    if (swapleg.equals("SwapLeg1")) {
+      System.out.println("进入》》》》》");
+      substringBetween =
+          StringUtils.substringBetween(jsonOutStr, "ResetSched : {", " SwapLeg1 : {");
+
+
+    } else {
+      System.out.println("哈哈》》》》》");
+      substringBetween = StringUtils.substringBetween(jsonOutStr, "ResetSched : {", " Outcome : {");
+    }
+
+    String numPerd = StringUtils.substringBetween(substringBetween, "NumPerd : \"", "\",");
+    Integer i = new Integer(numPerd);
+    String key = "";
+    String value = "";
+    Map<String, List<String>> map = new LinkedHashMap<String, List<String>>();
+    String[] strResetSched = new String[i];
+    // 得到reset.的数据
+    for (int j = 0; j < i; j++) {
+      String resetNumStr = "Reset." + j + " : {";
+      strResetSched[j] = StringUtils.substringBetween(substringBetween, resetNumStr, "}");
+    }
+    // 得到reset.中的数据
+    for (String strReset : strResetSched) {
+      List<String> list = new ArrayList<String>();
+      String accrSta = StringUtils.substringBetween(strReset, "AccrSta : \"", "\",");
+      String accrEnd = StringUtils.substringBetween(strReset, "AccrEnd : \"", "\",");
+      key = accrSta + "~" + accrEnd;
+      Integer num = new Integer(StringUtils.substringBetween(strReset, "Num : \"", "\","));
+      String[] rStrs = new String[num];
+
+      // 得到了R.0：“”中的数据
+      for (int j = 0; j < num; j++) {
+        String r = "R." + j + " : \"";
+        rStrs[j] = StringUtils.substringBetween(strReset, r, "\"");
+      }
+
+      for (int j = 0; j < rStrs.length; j++) {
+        // 开始组装对象并存到集合中
+
+        value = rStrs[j];
+        list.add(value);
+
+      }
+
+      map.put(key, list);
+
+    }
+
+    return map;
+
+  }
+
+  public static List<String[]> readTxtFile(String f) {
+    // String f = "D:\\FinanDeris\\data_sys\\market_conv_eqcm.txt";//
+    // D:\FinanDeris\data_sys\market_conv_eqcm.txt
+    List<String[]> head = new ArrayList<>();
+    //
+    if (f.contains("dir")) {
+      // Nothing todo.
+    } else {
+      try (FileReader fr = new FileReader(f)) {
+        try (BufferedReader br = new BufferedReader(fr)) {
+          String line = null;
+          // 读取行
+          int i = 0;
+          while ((line = br.readLine()) != null) {
+            // 文件中用TAB分割，所以用正则表达式 "\\t" 作为分割符
+            if (i == 0 || i == 1) {
+              logger.info(line.trim().split("[\\t+]").length);
+              head.add(line.trim().split("[\\t+]"));
+            } else {
+              String[] split = line.trim().split("[\\t+]");
+              if (split.length != 1) {
+                head.add(line.trim().split("[\\t+]"));
+              }
+            }
+            i++;
+          }
+
+          br.close();
+        }
+        // 关闭流
+
+        fr.close();
+
+      } catch (Exception ex) {
+        ex.printStackTrace();
+      } finally {
+
+      }
+    }
+    return head;
+  }
+
+
+
+  public static void putEqcmTab(HttpServletRequest request, String title) {
+    Map<String, String> m = new LinkedHashMap<String, String>();
+    m.put("br0", "#");
+    m.put("期货远期", "#");
+    m.put("普通期权", "/deri-web/eqcmController.do?toEqcmOptn");
+    m.put("创新产品1", "#");
+    m.put("创新产品2", "#");
+    m.put("br1", "#");
+
+    // m.put("处理文件", "eqcmController.do?dealfile");
+    m.put("商品收盘", "#");
+    m.put("利率收盘", "#");
+    m.put("基准更新", "#");
+    m.put("批量工作", "/deri-web/eqcmController.do?tobatch");
+    m.put("br2", "#");
+
+    m.put("损益报告", "/deri-web/eqcmController.do?toreport&batchType=PNL");
+    m.put("Delta报告", "/deri-web/eqcmController.do?toreport&batchType=Delta");
+    m.put("Vega报告", "/deri-web/eqcmController.do?toreport&batchType=Vega");
+    m.put("PAA报告", "/deri-web/eqcmController.do?toreport&batchType=PAA");
+
+    request.setAttribute("jspmap", m);
+    request.setAttribute("js", "<script src='plug-in/finanstar/js/fxindex.js'></script>");
+    request.setAttribute("title", title);
+    request.setAttribute("type", "eqcm");
+  }
+
+
+
+  // +++++++++++++++++++++++++++++
+
+  public static String longToIpV4(long longIp) {
+    int octet3 = (int) ((longIp >> 24) % 256);
+    int octet2 = (int) ((longIp >> 16) % 256);
+    int octet1 = (int) ((longIp >> 8) % 256);
+    int octet0 = (int) ((longIp) % 256);
+    return octet3 + "." + octet2 + "." + octet1 + "." + octet0;
+  }
+
+  public static long ipV4ToLong(String ip) {
+    String[] octets = ip.split("\\.");
+    return (Long.parseLong(octets[0]) << 24) + (Integer.parseInt(octets[1]) << 16)
+        + (Integer.parseInt(octets[2]) << 8) + Integer.parseInt(octets[3]);
+  }
+
+  public static boolean isIPv4Private(String ip) {
+    long longIp = ipV4ToLong(ip);
+    return (longIp >= ipV4ToLong("10.0.0.0") && longIp <= ipV4ToLong("10.255.255.255"))
+        || (longIp >= ipV4ToLong("172.16.0.0") && longIp <= ipV4ToLong("172.31.255.255"))
+        || longIp >= ipV4ToLong("192.168.0.0") && longIp <= ipV4ToLong("192.168.255.255");
+  }
+
+  public static boolean isIPv4Valid(String ip) {
+    return pattern.matcher(ip).matches();
+  }
+
+  public static String getIpFromRequest(HttpServletRequest request) {
+    String ip;
+    boolean found = false;
+    if ((ip = request.getHeader("x-forwarded-for")) != null) {
+      StrTokenizer tokenizer = new StrTokenizer(ip, ",");
+      while (tokenizer.hasNext()) {
+        ip = tokenizer.nextToken().trim();
+        if (isIPv4Valid(ip) && !isIPv4Private(ip)) {
+          found = true;
+          break;
+        }
+      }
+    }
+    if (!found) {
+      ip = request.getRemoteAddr();
+    }
+    return ip;
+  }
+
+  public static void navmap(HttpServletRequest request, String title) {
+    Map<String, String> m = new LinkedHashMap<String, String>();
+    m.put("br0", "#");
+    m.put("普通期权", "fxFxoEntityController.do?findmarket");
+    m.put("价差期权", "#");
+    m.put("跨市期权", "#");
+    m.put("领式期权", "#");
+    m.put("br1", "#");
+    m.put("数字期权", "#");
+    m.put("期权组合", "#");
+    m.put("批量工作", "fxFxoEntityController.do?tobatch");
+    m.put("损益报告", "fxFxoEntityController.do?toreport&batchType=PNL");
+    m.put("br2", "#");
+    m.put("Delta报告", "#");
+    m.put("Vega报告", "#");
+    m.put("Grid报告", "#");
+    m.put("PAA报告", "#");
+    request.setAttribute("jspmap", m);
+    request.setAttribute("js", "<script src='plug-in/finanstar/js/fxindex.js'></script>");
+    request.setAttribute("title", title);
+    request.setAttribute("type", "fxo");
+  }
+
+  public static void jsonLoop(Map<String, String> contain, Json json, String elemname,
+      String numname, String itemprev) {
+    Json jsoninner = json.getElem(elemname);
+    try {
+      int num = Integer.parseInt(jsoninner.getElemVal(numname));
+      contain.put(numname, num + "");
+      for (int i = 0; i < num; i++) {
+        String key = itemprev + i;
+        contain.put(key, jsoninner.getElemVal(key));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      logger.error("can not find " + elemname + " element number.");
+    }
+  }
+
+
+  public static String readToJsonStr(String f) {
+
+    StringBuffer buf = new StringBuffer("");
+    try (FileReader fr = new FileReader(f);) {
+      try (BufferedReader br = new BufferedReader(fr)) {
+        String line = null;
+        // 读取行
+        while ((line = br.readLine()) != null) {
+          int index = line.indexOf(" : ");
+          if (index > 0) {
+            String trim = line.substring(0, index).trim();
+            String newstr = "\"" + line.substring(0, index).trim() + "\"";
+            String newline = line.replace(trim, newstr);
+            buf.append(newline.trim());
+          } else {
+            buf.append(line.trim());
+          }
+        }
+        // 关闭流
+
+        br.close();
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    return buf.toString();
+  }
+
+  public static List<String> read(String f) {
+
+    List<String> list = new ArrayList<>();
+    try (FileReader fr = new FileReader(f);) {
+      try (BufferedReader br = new BufferedReader(fr)) {
+        String line = null;
+        // 读取行
+        while ((line = br.readLine()) != null) {
+          list.add(line);
+        }
+        // 关闭流
+        br.close();
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return list;
+  }
+
+  public String readToStr(String f) {
+
+    StringBuffer buf = new StringBuffer();
+
+    try (FileReader fr = new FileReader(f);) {
+      try (BufferedReader br = new BufferedReader(fr)) {
+        String line = null;
+        // 读取行
+        while ((line = br.readLine()) != null) {
+          buf.append(line);
+        }
+        // 关闭流
+        br.close();
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return buf.toString();
+  }
+
+  public static boolean write(String f, String str) {
+
+    try (FileWriter writer = new FileWriter(f)) {
+      try (BufferedWriter out = new BufferedWriter(writer)) {
+        out.write(str);
+        out.flush();
+        out.close();
+        return true;
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return false;
+  }
+
+  public static int runExeOnLinux(String filename) {
+    String command = "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/mpich-3.2/lib ; "
+        + "cd /var/www/html/finanstar/FinanDeris/DerivativesWeb/Exe ; ../Exe/Batch  fx -usr daniel  -jsn "
+        + filename + "; cd - ";
+    int i = -1;// 运行结果
+    Process process = null;
+    try {
+      // Runtime.getRuntime()返回当前应用程序的Runtime对象
+      // Process可以控制该子进程的执行或获取该子进程的信息。
+      // exec()方法指示Java虚拟机创建一个子进程执行指定的可执行程序，并返回与该子进程对应的Process对象实例。
+      process = Runtime.getRuntime().exec(new String[] {"/bin/sh", "-c", command});
+      BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+      String line = null;
+      while ((line = in.readLine()) != null) {
+        logger.info(">" + line);
+      }
+      in.close();
+      i = process.waitFor(); //// 等待子进程完成再往下执行。
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (process != null) {
+        process.destroy();
+      }
+    }
+    if (i == 0) {
+      logger.info("Batch Execute Completed.");
+    } else {
+      logger.error("Batch Execute Failed.");
+    }
+
+    return i;
+  }
+
+  public static int runExeOnLinux(String filename, String cmd) {
+    String command = "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/mpich-3.2/lib ; "
+        + "cd /var/www/html/finanstar/FinanDeris/DerivativesWeb/Exe ; ../Exe/Batch  " + cmd
+        + "  -jsn " + filename + "; cd - ";
+    int i = -1;// 运行结果
+    Process process = null;
+    try {
+      // Runtime.getRuntime()返回当前应用程序的Runtime对象
+      // Process可以控制该子进程的执行或获取该子进程的信息。
+      // exec()方法指示Java虚拟机创建一个子进程执行指定的可执行程序，并返回与该子进程对应的Process对象实例。
+      process = Runtime.getRuntime().exec(new String[] {"/bin/sh", "-c", command});
+      BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+      String line = null;
+      while ((line = in.readLine()) != null) {
+        logger.info(">" + line);
+      }
+      in.close();
+      i = process.waitFor(); //// 等待子进程完成再往下执行。
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (process != null) {
+        process.destroy();
+      }
+    }
+    if (i == 0) {
+      logger.info("Batch Execute Completed.");
+    } else {
+      logger.error("Batch Execute Failed.");
+    }
+
+    return i;
+  }
+
+  public static int runExe(String filename) {
+    StringBuffer bat = new StringBuffer();
+    bat.append("@echo off \n");
+    bat.append("D: \n");
+    bat.append("cd D:\\FinanDeris\\DerivativesWeb\\Exe\\ \n");
+    bat.append("Batch.exe fx -usr daniel  -jsn " + filename + "\n");
+    bat.append("exit \n");
+    File bf = new File("bat.bat");
+    BufferedWriter out;
+    try {
+      out = new BufferedWriter(new FileWriter(bf));
+      out.write(bat.toString());
+      out.flush();
+    } catch (IOException e1) {
+      e1.printStackTrace();
+    }
+    int i = -1;// 运行结果
+    Process process = null;
+    try {
+      // Runtime.getRuntime()返回当前应用程序的Runtime对象
+      // Process可以控制该子进程的执行或获取该子进程的信息。
+      // exec()方法指示Java虚拟机创建一个子进程执行指定的可执行程序，并返回与该子进程对应的Process对象实例。
+      process = Runtime.getRuntime().exec("cmd.exe /c start /b bat.bat");
+      BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+      String line = null;
+      while ((line = in.readLine()) != null) {
+        logger.info(">" + line);
+      }
+      in.close();
+      i = process.waitFor(); //// 等待子进程完成再往下执行。
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (process != null) {
+        process.destroy();
+      }
+    }
+    if (i == 0) {
+      logger.info("Batch Execute Completed.");
+    } else {
+      logger.error("Batch Execute Failed.");
+    }
+
+    return i;
+  }
+
+  public static int runExe(String filename, String cmd) {
+    StringBuffer bat = new StringBuffer();
+    bat.append("@echo off \n");
+    bat.append("D: \n");
+    bat.append("cd D:\\FinanDeris\\DerivativesWeb\\Exe\\ \n");
+    bat.append("Batch.exe " + cmd + "  -jsn " + filename + "\n");
+    bat.append("exit \n");
+    File bf = new File("bat.bat");
+    BufferedWriter out;
+    try {
+      out = new BufferedWriter(new FileWriter(bf));
+      out.write(bat.toString());
+      out.flush();
+    } catch (IOException e1) {
+      e1.printStackTrace();
+    }
+    int i = -1;// 运行结果
+    Process process = null;
+    try {
+      // Runtime.getRuntime()返回当前应用程序的Runtime对象
+      // Process可以控制该子进程的执行或获取该子进程的信息。
+      // exec()方法指示Java虚拟机创建一个子进程执行指定的可执行程序，并返回与该子进程对应的Process对象实例。
+      process = Runtime.getRuntime().exec("cmd.exe /c start /b bat.bat");
+      BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+      String line = null;
+      while ((line = in.readLine()) != null) {
+        logger.info(">" + line);
+      }
+      in.close();
+      i = process.waitFor(); //// 等待子进程完成再往下执行。
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (process != null) {
+        process.destroy();
+      }
+    }
+    if (i == 0) {
+      logger.info("Batch Execute Completed.");
+    } else {
+      logger.error("Batch Execute Failed.");
+    }
+
+    return i;
+  }
+
+  public static int runExeRate(String filename, String cmd) {
+    StringBuffer bat = new StringBuffer();
+    bat.append("@echo off \n");
+    bat.append("D: \n");
+    bat.append("cd D:\\FRATE\\DerivativesWeb\\Exe\\ \n");
+    bat.append("Batch.exe " + cmd + " -jsn " + filename + "\n");
+    bat.append("exit \n");
+    File bf = new File("bat.bat");
+    BufferedWriter out;
+    try {
+      out = new BufferedWriter(new FileWriter(bf));
+      out.write(bat.toString());
+      out.flush();
+    } catch (IOException e1) {
+      e1.printStackTrace();
+    }
+    int i = -1;// 运行结果
+    Process process = null;
+    try {
+      // Runtime.getRuntime()返回当前应用程序的Runtime对象
+      // Process可以控制该子进程的执行或获取该子进程的信息。
+      // exec()方法指示Java虚拟机创建一个子进程执行指定的可执行程序，并返回与该子进程对应的Process对象实例。
+      process = Runtime.getRuntime().exec("cmd.exe /c start /b bat.bat");
+      BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+      String line = null;
+      while ((line = in.readLine()) != null) {
+        logger.info(">" + line);
+      }
+      in.close();
+      i = process.waitFor(); //// 等待子进程完成再往下执行。
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (process != null) {
+        process.destroy();
+      }
+    }
+    if (i == 0) {
+      logger.info("Batch Execute Completed.");
+    } else {
+      logger.error("Batch Execute Failed.");
+    }
+
+    return i;
+  }
+
+  /**
+   * 上传到 临时 centos 192.168.140.128 ：8888
+   * 
+   * @param filepath
+   * @param ip
+   * @param port
+   */
+  public static void uploadToLinuxServer(final String filepath, final String ip, final int port) {
+    // for (int i = 0; i < 3; i++) {
+    // 模拟三个发端
+    new Thread() {
+      public void run() {
+        try {
+          SocketChannel socketChannel = SocketChannel.open();
+          socketChannel.socket().connect(new InetSocketAddress(ip, port));
+          File file = new File(filepath);
+          @SuppressWarnings("resource")
+          FileChannel fileChannel = new FileInputStream(file).getChannel();
+          ByteBuffer buffer = ByteBuffer.allocate(100);
+          socketChannel.read(buffer);
+          buffer.flip();
+          logger.info(new String(buffer.array(), 0, buffer.limit(), Charset.forName("utf-8")));
+          buffer.clear();
+          int num = 0;
+          while ((num = fileChannel.read(buffer)) > 0) {
+            buffer.flip();
+            socketChannel.write(buffer);
+            buffer.clear();
+          }
+          if (num == -1) {
+            fileChannel.close();
+            socketChannel.shutdownOutput();
+          }
+          // 接受服务器
+          socketChannel.read(buffer);
+          buffer.flip();
+          logger.info(new String(buffer.array(), 0, buffer.limit(), Charset.forName("utf-8")));
+          buffer.clear();
+          socketChannel.close();
+        } catch (IOException e) {
+          System.err.println("Can not connect Linux Server.");
+          Thread.yield();
+        }
+
+      };
+    }.start();
+    // }
+    Thread.yield();
+  }
+
+  /**
+   * get user's ip:port. 获取用户真实IP地址，不使用request.getRemoteAddr();的原因是有可能用户使用了代理软件方式避免真实IP地址,
+   * 可是，如果通过了多级反向代理的话，X-Forwarded-For的值并不止一个，而是一串IP值，究竟哪个才是真正的用户端的真实IP呢？
+   * 答案是取X-Forwarded-For中第一个非unknown的有效IP字符串。 如：X-Forwarded-For：192.168.1.110, 192.168.1.120,
+   * 192.168.1.130, 192.168.1.100 用户真实IP为： 192.168.1.110
+   * 
+   * @param request
+   * @return
+   */
+  public static String getIpAddress(HttpServletRequest request) {
+    String ip = request.getHeader("x-forwarded-for");
+    if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("Proxy-Client-IP");
+    }
+    if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("WL-Proxy-Client-IP");
+    }
+    if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("HTTP_CLIENT_IP");
+    }
+    if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("HTTP_X_FORWARDED_FOR");
+    }
+    if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getRemoteAddr();
+    }
+    // get port
+    String uri = request.getRequestURI();// 返回请求行中的资源名称
+    String url = request.getRequestURL().toString();// 获得客户端发送请求的完整url
+    String params = request.getQueryString();// 返回请求行中的参数部分
+    String host = request.getRemoteHost();// 返回发出请求的客户机的主机名
+    int port = request.getRemotePort();// 返回发出请求的客户机的端口号。
+    logger.info(host);
+    logger.info(port);
+    return ip + ":" + port;
+  }
+
+  /**
+   * tenor数据去重
+   */
+  public static List<String> deleteSameValue(List<String> oldList) {
+
+    /*
+     * List<String> newList=new ArrayList<String>();
+     */ oldList.remove(1);
+    oldList.remove(1);
+    /*
+     * Map<String, String> map=new LinkedHashMap<String,String>(); for (int
+     * i=0;i<oldList.size();i++) { map.put(oldList.get(i).split("_")[1].split("~")[0],
+     * oldList.get(i)); } Set<String> keySet = map.keySet(); for (String key : keySet) {
+     * newList.add(map.get(key)); } Collections.sort(newList); for (String string : newList) {
+     * System.out.println(string); }
+     */
+    return oldList;
+  }
+
+  /**
+   * 生成利率重置序列json
+   */
+  public static void productReset(String reset, String resetChange, Json swapleg0) {
+    String[] resetSE = reset.split(",");
+    Json resetSched;
+    try {
+      resetSched = swapleg0.addElement("ResetSched");
+      resetSched.addElement("Title", "~QuoDate~EffDate~Type~Rate~");
+      resetSched.addElement("NumPerd", resetSE.length);
+      String[] resetChangeList = resetChange.split(",");
+      for (Integer i = 0; i < resetSE.length; i++) {
+
+        Json reset1 = resetSched.addElement("Reset." + i);
+        reset1.addElement("AccrSta", resetSE[i].split("~")[0]);
+        reset1.addElement("AccrEnd", resetSE[i].split("~")[1]);
+        List<String> resetR = new ArrayList<String>();
+        if (resetChangeList.length > 0 && resetChange.length() > 5) {
+
+          for (int j = 0; j < resetChangeList.length; j++) {
+            Integer m = 1 + i;
+            if (m.toString().equals(resetChangeList[j].split("~")[0])) {
+              String line = "";
+              line = resetChangeList[j].split("~")[1].replace("-", "") + "~"
+                  + resetChangeList[j].split("~")[2].replace("-", "") + "~"
+                  + resetChangeList[j].split("~")[4] + "~" + resetChangeList[j].split("~")[3];
+              resetR.add(line);
+
+            }
+          }
+          reset1.addElement("NumExclP", resetR.size());
+          for (int k = 0; k < resetR.size(); k++) {
+
+            reset1.addElement("R." + k, resetR.get(k));
+          }
+
+        } else {
+          reset1.addElement("NumExclP", "0");
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+  }
+
+  /**
+   * 从数据库中取出收取和支付序列字符串进行处理
+   */
+  public static String[] getSplitSched(String sched) {
+    return sched.split(":")[1].split(",");
+  }
+
+  public static int runExeOnLinuxIrs(String filename) {
+    String command = "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/mpich-3.2/lib ; "
+        + "cd /var/www/html/finanstar/FinanDeris/DerivativesWeb/Exe ; ../Exe/Batch  rate -usr LinDa -jsn "
+        + filename + "; cd - ";
+    int i = -1;// 运行结果
+    Process process = null;
+    try {
+      // Runtime.getRuntime()返回当前应用程序的Runtime对象
+      // Process可以控制该子进程的执行或获取该子进程的信息。
+      // exec()方法指示Java虚拟机创建一个子进程执行指定的可执行程序，并返回与该子进程对应的Process对象实例。
+      process = Runtime.getRuntime().exec(new String[] {"/bin/sh", "-c", command});
+      BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+      String line = null;
+      while ((line = in.readLine()) != null) {
+        System.out.println(">" + line);
+      }
+      in.close();
+      i = process.waitFor(); //// 等待子进程完成再往下执行。
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (process != null) {
+        process.destroy();
+      }
+    }
+    if (i == 0) {
+      System.out.println("execute completed.");
+    } else {
+      System.out.println("execute failed.");
+    }
+
+    return i;
+  }
+
+  /**
+   * 创建文件
+   * 
+   * @param path 生成jsn文件存放的路径
+   * @param market 组成jsn文件名的元素之一
+   * @param jsonString 要存入的json字符串
+   * @return 返回json文件名和json文件的路径 0为文件名，1为路径
+   */
+  public static Map<String, String> creatFile(String path, String market, String jsonString) {
+    Map<String, String> map = new HashMap<String, String>();
+    String jsonFileName = "";
+    String jsonFilePath = "";
+    FileWriter fileWriter = null;
+    Date date = new Date();
+    String s = File.separator;
+    // 组装文件名
+    SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+    String string = simpleDateFormat.format(date).toString();
+    // 组装文件夹名
+    SimpleDateFormat simpleDateFormat1 = new SimpleDateFormat("yyyMMdd");
+    String string1 = simpleDateFormat1.format(date).toString();
+
+    jsonFileName = "raopt_irs_" + string + "_" + market;
+    // 建立文件夹
+    File file = new File(path + s + string1);
+    if (!file.exists()) {
+      file.mkdirs();
+
+    }
+    // 获取文件夹路径
+    jsonFilePath = file.getPath();
+
+    // 创建文件
+    File f = new File(file, jsonFileName + ".jsn");
+    if (!f.exists()) {
+      try {
+        f.createNewFile();
+        fileWriter = new FileWriter(f);
+        fileWriter.write(jsonString);
+        fileWriter.flush();
+      } catch (IOException e) {
+        e.printStackTrace();
+      } finally {
+        if (fileWriter != null) {
+          try {
+            fileWriter.close();
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+    }
+    // 返回生成的jsn文件名
+    map.put("jsonFilePath", jsonFilePath);
+    map.put("jsonFileName", jsonFileName);
+
+    return map;
+  }
+
+  /**
+   * 计价接口
+   * 
+   * @param exePath exe程序的路径
+   * @param jsonFileName json文件的路径
+   */
+  public static int execCalc(String exePath, String jsonFileName) {
+
+    final Runtime runtime = Runtime.getRuntime();
+    String cmdStr2 = "rate -jsn " + jsonFileName;
+    Process process1 = null;
+    int i = -1;
+    try {
+      // 调用exe程序进行计算
+      process1 = runtime.exec("cmd.exe /c start Batch.exe " + cmdStr2, null, new File(exePath));
+      BufferedReader br =
+          new BufferedReader(new InputStreamReader(process1.getInputStream(), "GBK"));
+      String line = null;
+      while ((line = br.readLine()) != null) {
+        System.out.println(line);
+      }
+      i = process1.waitFor();
+
+    } catch (final Exception e) {
+      System.out.println("Error exec!");
+      e.printStackTrace();
+    }
+    try {
+      process1.waitFor();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    } finally {
+      if (process1 != null) {
+        process1.destroy();
+      }
+
+    }
+
+    return i;
+  }
+
+  /**
+   * 读取计算后的文件并返回该文件的字符串格式
+   * 
+   * @param jsonFileName json文件名
+   * @param jsonFilePath json文件路径
+   * @return 返回以字符串形式的读取计算后的json文件
+   */
+  public static String readJsonFile(String jsonFileName, String jsonFilePath) {
+    String s = File.separator;
+    File file = new File(jsonFilePath + s + jsonFileName);
+    BufferedReader bufferedReader = null;
+    String outJsonStr = "";
+    StringBuffer stringBuffer = new StringBuffer();
+    try {
+      bufferedReader = new BufferedReader(new FileReader(file));
+      while ((outJsonStr = bufferedReader.readLine()) != null) {
+        stringBuffer.append(outJsonStr + "\n");
+      }
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      if (bufferedReader != null) {
+        try {
+          bufferedReader.close();
+        } catch (IOException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      }
+    }
+
+    return stringBuffer.toString();
+  }
+
+  public static void getJsonSched(String sched, Json j, String[] str, String index) {
+
+    try {
+      if (index != "") {
+        j.addElement("FixedLeg", "Yes");
+      } else {
+        j.addElement("FixedLeg", "No");
+      }
+      Json jsonSched = j.addElement("PaySched");
+      jsonSched.addElement("CustDate", str[0]);
+      jsonSched.addElement("CustNotl", str[1]);
+      jsonSched.addElement("CustFixd", str[2]);
+      jsonSched.addElement("Title", "EndDate~PayDate~Notional~FixRate");
+      String[] split = sched.split(",");
+      jsonSched.addElement("NumPerd", split.length);
+
+      for (int i = 0; i < split.length; i++) {
+        if (split[i].length() > 8) {
+          split[i] = split[i].replace("-", "");
+        }
+        jsonSched.addElement("P." + i, split[i]);
+      }
+    } catch (Exception e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+  }
+
+  public static String[] getCust(String cust) {
+    String[] str = new String[3];
+    String date = "";
+    String fixd = "";
+    String notl = "";
+    if (!cust.equals("null")) {
+      String[] split = cust.split(",");
+      if (split[0].equals("Yes")) {
+        date = "1";
+      } else {
+        date = "0";
+      }
+      if (split[1].equals("Yes")) {
+        fixd = "1";
+      } else {
+        fixd = "0";
+      }
+      if (split[2].equals("Yes")) {
+        notl = "1";
+      } else {
+        notl = "0";
+      }
+    } else {
+      date = "0";
+      fixd = "0";
+      notl = "0";
+    }
+    str[0] = date;
+    str[1] = notl;
+    str[2] = fixd;
+    return str;
+  }
+
+  /**
+   * 将日期格式转化为字符串格式
+   * 
+   * @param date
+   * @return
+   */
+  public static String dateFormat(String date) {
+    String str = date.replaceAll("-", "");
+    return str;
+  }
+
+  /**
+   * 解析计算后的json字符串
+   * 
+   * @param jsonOutStr
+   * @return 返回支付序列集合
+   */
+  public static List<PaySchedEntity> getPaySchedList(String jsonOutStr, String startDate) {
+    List<PaySchedEntity> paySchedEntities = new ArrayList<PaySchedEntity>();
+    String[] swapLeg0 = getSwapLeg0(jsonOutStr, "SwapLeg0 : {", TILESTR_STRING);
+    for (int i = 0; i < swapLeg0.length; i++) {
+      if (i == 0) {
+        paySchedEntities.add(new PaySchedEntity(startDate,
+            produceDateStr(swapLeg0[i].split("~")[0]), produceDateStr(swapLeg0[i].split("~")[1]),
+            swapLeg0[i].split("~")[2], swapLeg0[i].split("~")[3], swapLeg0[i].split("~")[4],
+            swapLeg0[i].split("~")[5], swapLeg0[i].split("~")[6], swapLeg0[i].split("~")[7],
+            swapLeg0[i].split("~")[8], swapLeg0[i].split("~")[9]));
+
+      } else {
+        paySchedEntities.add(new PaySchedEntity(
+
+            produceDateStr(swapLeg0[i - 1].split("~")[1]),
+            produceDateStr(swapLeg0[i].split("~")[0]), produceDateStr(swapLeg0[i].split("~")[1]),
+            swapLeg0[i].split("~")[2], swapLeg0[i].split("~")[3], swapLeg0[i].split("~")[4],
+            swapLeg0[i].split("~")[5], swapLeg0[i].split("~")[6], swapLeg0[i].split("~")[7],
+            swapLeg0[i].split("~")[8], swapLeg0[i].split("~")[9]));
+
+      }
+    }
+    return paySchedEntities;
+  }
+
+  /**
+   * 解析计算后的json字符串
+   * 
+   * @param jsonOutStr
+   * @return 返回收取序列集合
+   */
+  public static List<ResetSchedEntity> getResetSchedList(String jsonOutStr, String startDate) {
+    List<ResetSchedEntity> resetSchedEntities = new ArrayList<ResetSchedEntity>();
+    String[] swapLeg0 = getSwapLeg1(jsonOutStr, "SwapLeg1 : {", TILESTR_STRING);
+    for (int i = 0; i < swapLeg0.length; i++) {
+      if (i == 0) {
+        resetSchedEntities.add(new ResetSchedEntity(startDate,
+            produceDateStr(swapLeg0[i].split("~")[0]), produceDateStr(swapLeg0[i].split("~")[1]),
+            swapLeg0[i].split("~")[2], swapLeg0[i].split("~")[3], swapLeg0[i].split("~")[4],
+            swapLeg0[i].split("~")[5], swapLeg0[i].split("~")[6], swapLeg0[i].split("~")[7],
+            swapLeg0[i].split("~")[8], swapLeg0[i].split("~")[9]));
+      } else {
+        resetSchedEntities.add(new ResetSchedEntity(produceDateStr(swapLeg0[i - 1].split("~")[1]),
+            produceDateStr(swapLeg0[i].split("~")[0]), produceDateStr(swapLeg0[i].split("~")[1]),
+            swapLeg0[i].split("~")[2], swapLeg0[i].split("~")[3], swapLeg0[i].split("~")[4],
+            swapLeg0[i].split("~")[5], swapLeg0[i].split("~")[6], swapLeg0[i].split("~")[7],
+            swapLeg0[i].split("~")[8], swapLeg0[i].split("~")[9]));
+      }
+
+    }
+    return resetSchedEntities;
+
+  }
+
+  /**
+   * 获取SwapLeg0的数据
+   * 
+   * @param jsonOutStr 计算后的json字符串
+   * @param SwapLegStr 选择截取SwapLeg0或SwapLeg1的数据
+   * @param tileStr tile截取
+   * @return
+   */
+
+  public static String[] getSwapLeg0(String jsonOutStr, String SwapLegStr, String tileStr) {
+    // 获取SwapLeg级的数据
+    String substringBetween = StringUtils.substringBetween(jsonOutStr, SwapLegStr, "},");
+    // 获取title下的数据
+    substringBetween = StringUtils.substringBetween(substringBetween, tileStr, "}");
+    // 对获取的数据进行拆分
+    String[] split = substringBetween.split(",");
+    // 移除不需要的数据
+    String[] split2 = new String[split.length - 1];
+    for (int i = 1; i < split.length; i++) {
+      split2[i - 1] = split[i];
+    }
+    // 提取“”中的信息
+    for (int i = 0; i < split2.length; i++) {
+      split2[i] = StringUtils.substringBetween(split2[i], "\"", "\"");
+    }
+    // 去除空格，换行，制表符
+    for (int i = 0; i < split2.length; i++) {
+      split2[i] = replaceBackStr(split2[i]);
+    }
+    return split2;
+  }
+
+  /**
+   * 去除空格，换行，制表符
+   * 
+   * @param replaceStr 要处理的字符串
+   * @return 处理后的字符串
+   */
+  public static String replaceBackStr(String replaceStr) {
+    String afterReplaceStr = "";
+    if (replaceStr != null) {
+      Pattern p = Pattern.compile("\\s*|\t|\r|\n");
+      Matcher m = p.matcher(replaceStr);
+      afterReplaceStr = m.replaceAll("");
+    }
+    return afterReplaceStr;
+
+  }
+
+
+
+  /**
+   * 获取Swapleg1中sched数据
+   * 
+   * @param jsonOutStr
+   * @param SwapLegStr
+   * @param tileStr
+   * @return
+   */
+  public static String[] getSwapLeg1(String jsonOutStr, String SwapLegStr, String tileStr) {
+    // 获取SwapLeg级的数据
+    String substringBetween =
+        StringUtils.substringBetween(jsonOutStr, SwapLegStr, "ResetSched : {");
+    // 获取title下的数据
+    substringBetween = StringUtils.substringBetween(substringBetween, tileStr, "},");
+    // 对获取的数据进行拆分
+    String[] split = substringBetween.split(",");
+    // 移除不需要的数据
+    String[] split2 = new String[split.length - 1];
+    for (int i = 1; i < split.length; i++) {
+      split2[i - 1] = split[i];
+    }
+    // 提取“”中的信息
+    for (int i = 0; i < split2.length; i++) {
+      split2[i] = StringUtils.substringBetween(split2[i], "\"", "\"");
+    }
+
+    return split2;
+  }
+
+  /**
+   * 
+   * @param jsonOutStr
+   * @return 0为编号数组 1为resetList集合
+   */
+  public static List<InterestRateResetSequenceEntity> getReset(String jsonOutStr) {
+    List<InterestRateResetSequenceEntity> interestRateResetSequenceEntities =
+        new ArrayList<InterestRateResetSequenceEntity>();
+    // 得到ResetSched : {}中的数据
+    String substringBetween =
+        StringUtils.substringBetween(jsonOutStr, "ResetSched : {", " Outcome : {");
+    String numPerd = StringUtils.substringBetween(substringBetween, "NumPerd : \"", "\",");
+    Integer i = new Integer(numPerd);
+
+    String[] strResetSched = new String[i];
+    // 得到reset.的数据
+    for (int j = 0; j < i; j++) {
+      String resetNumStr = "Reset." + j + " : {";
+      strResetSched[j] = StringUtils.substringBetween(substringBetween, resetNumStr, "}");
+    }
+    // 得到reset.中的数据
+    for (String strReset : strResetSched) {
+      String accrSta = StringUtils.substringBetween(strReset, "AccrSta : \"", "\",");
+      String accrEnd = StringUtils.substringBetween(strReset, "AccrEnd : \"", "\",");
+      Integer num = new Integer(StringUtils.substringBetween(strReset, "Num : \"", "\","));
+      String[] rStrs = new String[num];
+
+      // 得到了R.0：“”中的数据
+      for (int j = 0; j < num; j++) {
+        String r = "R." + j + " : \"";
+        rStrs[j] = StringUtils.substringBetween(strReset, r, "\"");
+      }
+      for (int j = 0; j < rStrs.length; j++) {
+        // 开始组装对象并存到集合中
+        interestRateResetSequenceEntities.add(
+            new InterestRateResetSequenceEntity(produceDateStr(accrSta), produceDateStr(accrEnd),
+                produceDateStr(rStrs[j].split("~")[0]), produceDateStr(rStrs[j].split("~")[1]),
+                rStrs[j].split("~")[3], rStrs[j].split("~")[2]));
+      }
+    }
+
+    System.out.println("JsonUtil" + interestRateResetSequenceEntities);
+
+    return interestRateResetSequenceEntities;
+
+  }
+
+  /**
+   * 递归生成json
+   * 
+   * @param j JSONObject
+   * @param a 数组
+   * @param i 下标
+   * @return
+   */
+  public static JSONObject check(JSONObject j, String[] a, int i) {
+
+    if (i < a.length) {
+      if (!j.containsKey(a[i])) {
+        j.put(a[i], new JSONObject());
+      }
+      return check(j.getJSONObject(a[i]), a, i + 1);
+    }
+    return null;
+
+  }
+
+}

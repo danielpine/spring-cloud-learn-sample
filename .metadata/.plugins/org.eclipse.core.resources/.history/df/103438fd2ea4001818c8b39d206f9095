@@ -1,0 +1,942 @@
+package com.finanstar.eqcm.controller;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.finanstar.basicset.controller.vo.VolForm;
+import com.finanstar.eqcm.entity.EqcmOptnVO;
+import com.finanstar.eqcm.entity.MarketConvEqcmEntity;
+import com.finanstar.eqcm.entity.MartketInstrEqcmEntity;
+import com.finanstar.eqcm.entity.deal.EqcmDeal;
+import com.finanstar.eqcm.entity.deal.EqcmDealSched;
+import com.finanstar.eqcm.entity.report.ReportEqcm;
+import com.finanstar.eqcm.entity.report.ReportEqcmLine;
+import com.finanstar.eqcm.entity.vo.EqcmDealVo;
+import com.finanstar.eqcm.service.EqcmBatchServiceI;
+import com.finanstar.eqcm.service.EqcmServiceI;
+import com.finanstar.eqcm.service.EqcmTradeServiceI;
+import com.finanstar.eqcm.service.Serializer;
+import com.finanstar.fx.entity.ReportOption;
+import com.finanstar.fx.service.MarketConvFxServiceI;
+import com.finanstar.marketconv.swap.service.MarketConvSwapServiceI;
+import com.finanstar.marketindex.entity.MarketIndexEntity;
+import com.finanstar.rate.data.service.DataRateServiceI;
+import com.finanstar.system.pojo.FsCustomerCompany;
+import com.finanstar.util.common.Util;
+
+import net.sf.json.JSONArray;
+
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import org.apache.log4j.Logger;
+import org.jeecgframework.core.common.controller.BaseController;
+import org.jeecgframework.core.common.model.json.AjaxJson;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.ModelAndView;
+
+/**
+ * 
+ * @date 2018-05-04
+ * @version V1.0
+ *
+ */
+@Controller
+@RequestMapping("/eqcmController")
+public class EqcmController extends BaseController {
+	/**
+	 * Logger for this class
+	 */
+	private static final Logger logger = Logger.getLogger(EqcmController.class);
+	@Autowired
+	private EqcmServiceI eqcmServiceI;
+	@Autowired
+	private Serializer serializer;
+	@Autowired
+	private EqcmTradeServiceI tradeServiceI;
+	@Autowired
+	private EqcmBatchServiceI eqcmBatchServiceI;
+	@Autowired
+	private DataRateServiceI dataRateSer;
+	@Autowired
+	private MarketConvSwapServiceI marketConvSwapServiceI;
+	@Autowired
+	private MarketConvFxServiceI marketConvFxServiceI;
+	/**
+	 * EQCM 主页
+	 * 
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@RequestMapping(params = "index")
+	public ModelAndView index(HttpServletRequest request, HttpServletResponse response) {
+		ModelAndView view = new ModelAndView("com/finanstar/index");
+		Util.putEqcmTab(request, "商品股票衍生产品应用");
+		return view;
+	}
+
+	/**
+	 * 从文本文件录入数据临时方法：index conv instr vol pricingAdj
+	 * 
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@RequestMapping(params = "dealfile")
+	public ModelAndView dealFile(HttpServletRequest request, HttpServletResponse response) {
+
+		ModelAndView view = new ModelAndView("com/finanstar/eqcm/filecallback");
+
+		/*
+		 * @SuppressWarnings("unchecked") List<MarketConvEqcmEntity> list =
+		 * eqcmServiceI.saveTxtToDataBase("G:\\XHYT\\conv\\market_conv_eqcm.txt");//
+		 * 市场惯例 System.out.println(list.size()); for (MarketConvEqcmEntity m : list) {
+		 * System.out.println(m); }
+		 */
+
+		/*
+		 * @SuppressWarnings("unchecked") List<MartketInstrEqcmEntity> list =
+		 * eqcmServiceI.saveTxtToDataBase("instr.txt");//市场工具 for(MartketInstrEqcmEntity
+		 * m:list){ //System.out.println(m); }
+		 */
+		// eqcmServiceI.saveTxtToDataBase("D:\\XHYT\\tmpdir");//市场数据
+		// eqcmServiceI.saveTxtToDataBase("D:\\XHYT\\voldir");// 波动率数据
+		// eqcmServiceI.saveTxtToDataBase("volskew.txt");//录入volskew.eqcm.txt
+		eqcmServiceI.saveTxtToDataBase("D:\\FinanDeris\\data_mkt\\yyyymmdd\\market_adj.eqcm.txt");// 录入volskew.eqcm.txt
+		// view.addObject("eqcm", list);
+		return view;
+	}
+
+	/**
+	 * 查询30天历史数据
+	 * 
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@RequestMapping(params = "hisData")
+	public ModelAndView findHistoryData(String StaDate, String EndDate, String market, String type,
+			HttpServletRequest request, HttpServletResponse response) {
+
+		ModelAndView view = new ModelAndView("com/finanstar/eqcm/data/hisdata");
+		List<String> typeList = new ArrayList<>();
+		typeList.add("EQCM");
+		typeList.add("FX");
+		typeList.add("SWAP");
+		view.addObject("typeList", typeList);
+		if(type==null) {
+			market = "SHFECU";
+			type = "EQCM";
+		}
+		if (StaDate == null || EndDate == null) {
+			System.out.println("werqerqwerwqerwqerqwerqwe");
+			String pattern = "yyyy-MM-dd";
+			EndDate = Util.getNowDate(pattern);
+			StaDate = Util.getDay(EndDate, pattern, -30);
+			
+		}
+		view.addObject("EndDate", EndDate);
+		view.addObject("StaDate",StaDate);
+		view.addObject("type", type);
+		view.addObject("market",market);
+		List<String> tenorList = new ArrayList<>();
+		List<String> dateList = new ArrayList<>();
+		List<MarketIndexEntity> indexList = null;
+		if (type.equals("EQCM")) {
+			List<String> allMarket = eqcmServiceI.findAllMarket();
+			if(!allMarket.contains(market) || market==null ) {
+				market = "SHFECU";
+			}
+			view.addObject("allMkt", allMarket);
+			indexList = eqcmServiceI.findIndexPackageByMarketAndStaDateToEndDate(StaDate.replaceAll("-", ""),
+					EndDate.replaceAll("-", ""), market, eqcmServiceI);
+		} else if (type.equals("SWAP")) {
+			List<String> allMarket = marketConvSwapServiceI.getMarketList();
+			if(!allMarket.contains(market) || market==null) {
+				market = allMarket.get(0);
+			}
+			
+			view.addObject("allMkt", allMarket);
+			indexList = dataRateSer.findIndexPackageByMarketAndStaDateToEndDate(StaDate.replaceAll("-", ""),
+					EndDate.replaceAll("-", ""), market, dataRateSer,type,true);
+		}else if(type.equals("FX")) {
+			List<String> allMarket = marketConvFxServiceI.getMarketList();
+			if(!allMarket.contains(market) || market==null) {
+				market = allMarket.get(0);
+			}
+			
+			view.addObject("allMkt", allMarket);
+			indexList = dataRateSer.findIndexPackageByMarketAndStaDateToEndDate(StaDate.replaceAll("-", ""),
+					EndDate.replaceAll("-", ""), market, dataRateSer,type,true);
+		}
+		Map<String, String> valueMap = new LinkedHashMap<>();
+		if (indexList==null || indexList.isEmpty()) {
+			return view;
+		}
+		for (MarketIndexEntity index : indexList) {
+
+			String date = index.getDataDate();
+			String tenor = index.getTenor();
+
+			if (!tenorList.contains(tenor)) {
+				tenorList.add(tenor);
+			}
+			if (!dateList.contains(date)) {
+				dateList.add(date);
+			}
+
+			String key = date + "~" + tenor;
+			valueMap.put(key, index.getValue());
+
+		}
+
+		//Collections.sort(tenorList);
+		Collections.sort(dateList);
+
+		view.addObject("StaDate", StaDate);
+		view.addObject("EndDate", EndDate);
+		view.addObject("sltMkt", market);
+		
+
+		view.addObject("tenorList", tenorList);
+		view.addObject("dateList", dateList);
+		view.addObject("valueMap", valueMap);
+		view.addObject("tablewidth", tenorList.size() * 100);
+
+		return view;
+	}
+
+	/**
+	 * 跳转到指定市场的page
+	 * 
+	 * @param market
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@RequestMapping(params = "toEqcmPage")
+	public ModelAndView toEqcmPage(String market, String pageType, HttpServletRequest request,
+			HttpServletResponse response) {
+		ModelAndView view = new ModelAndView("com/finanstar/eqcm/price/" + pageType);
+		// 设置页面数据后跳到计价页面
+		logger.info("OK");
+		// 第一种：找出所有市场惯例并转换成json格式传到前台
+		// 第二种：找出所有市场和与之对应的第一条市场惯例传到前台
+		// 以下实现第二种方法
+		//
+		List<String> ml = eqcmServiceI.findAllMarket();
+
+		String typeName;
+		if (pageType.equals("optn")) {
+			typeName = "普通期权";
+		} else {
+			typeName = "期货远期";
+		}
+
+		view.addObject("type", pageType);
+
+		view.addObject("typeName", typeName);
+
+		view.addObject("ml", ml);
+
+		if (market == null) {// null 为第一次访问
+			market = ml.get(0);
+		}
+
+		view.addObject("dealType", "EQCM_" + pageType.toUpperCase());
+
+		view.addObject("sltMkt", market);
+		// 市场惯例
+		MarketConvEqcmEntity conv = eqcmServiceI.findConvByMarket(market);
+
+		// 市场工具 --->定价基准
+		List<MartketInstrEqcmEntity> instrList = eqcmServiceI.findInstrByMarket(market, "1");
+
+		if (!instrList.isEmpty()) {
+			StringBuffer sb = new StringBuffer();
+			int i = 0;
+			int size = instrList.size();
+			for (MartketInstrEqcmEntity mi : instrList) {
+				sb.append(mi.getMarket() + "_" + mi.getTenor());
+				if (i < size - 1)
+					sb.append(",");
+				i++;
+			}
+			view.addObject("instr", sb.toString());
+		} else {
+			view.addObject("instr", "NODATA");
+		}
+
+		// 找出工作日
+
+		view.addObject("exerBusdy", eqcmServiceI.findAllExerBusdy());
+
+		view.addObject("mktconv", conv);
+
+		view.addObject("json", JSON.toJSON(conv).toString());
+
+		return view;
+	}
+
+	/**
+	 * 跳转到指定市场的page
+	 * 
+	 * @param market
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@RequestMapping(params = "findDealById")
+	public ModelAndView findDealById(String dealType, HttpServletRequest request, HttpServletResponse response) {
+
+		String id = request.getParameter("id");
+
+		EqcmDeal deal = tradeServiceI.findDealById(id);
+
+		EqcmDealVo vo = new EqcmDealVo(deal);
+
+		String market = vo.getMarket();
+
+		ModelAndView view = new ModelAndView("com/finanstar/eqcm/price/" + dealType.split("_")[1].toLowerCase());
+		// 设置页面数据后跳到计价页面
+		logger.info("OK");
+		// 第一种：找出所有市场惯例并转换成json格式传到前台
+		// 第二种：找出所有市场和与之对应的第一条市场惯例传到前台
+		// 以下实现第二种方法
+		//
+		List<String> ml = eqcmServiceI.findAllMarket();
+
+		String pageType = dealType.split("_")[1].toLowerCase();
+
+		String typeName;
+		if (pageType.equals("optn")) {
+			typeName = "普通期权";
+		} else {
+			typeName = "期货远期";
+		}
+
+		view.addObject("type", pageType);
+
+		view.addObject("typeName", typeName);
+
+		view.addObject("dealType", dealType);
+
+		view.addObject("ml", ml);
+
+		if (market == null) {// null 为第一次访问
+			market = ml.get(0);
+		}
+
+		view.addObject("sltMkt", market);
+		// 市场惯例
+		MarketConvEqcmEntity conv = eqcmServiceI.findConvByMarket(market);
+
+		// 市场工具 --->定价基准
+		List<MartketInstrEqcmEntity> instrList = eqcmServiceI.findInstrByMarket(market, "1");
+
+		if (!instrList.isEmpty()) {
+			StringBuffer sb = new StringBuffer();
+			int i = 0;
+			int size = instrList.size();
+			for (MartketInstrEqcmEntity mi : instrList) {
+				sb.append(mi.getMarket() + "_" + mi.getTenor());
+				if (i < size - 1)
+					sb.append(",");
+				i++;
+			}
+			view.addObject("instr", sb.toString());
+		} else {
+			view.addObject("instr", "NODATA");
+		}
+
+		// 找出工作日
+
+		view.addObject("exerBusdy", eqcmServiceI.findAllExerBusdy());
+
+		view.addObject("mktconv", conv);
+
+		view.addObject("json", JSON.toJSON(conv).toString());
+
+		// 处理查询数据
+
+		String maxversion = tradeServiceI.findMaxVersion(deal.getDealId());
+
+		if (maxversion.equals(deal.getVersion())) {
+			view.addObject("Status", deal.getStatus());
+		} else {
+			view.addObject("Status", "NotNew");
+		}
+
+		JSONObject query = new JSONObject();
+
+		query.put("deal", JSON.toJSON(deal));
+		query.put("sched", JSON.toJSON(deal.getDealSched()));
+
+		view.addObject("query", query);
+
+		return view;
+	}
+
+	@RequestMapping(params = "addtrade", method = RequestMethod.POST)
+	@ResponseBody
+	public AjaxJson addtrade(AjaxJson j, EqcmDeal deal, EqcmDealSched dealSched, HttpServletRequest request,
+			HttpServletResponse response) {
+
+		// 权限判断
+
+		String id = request.getParameter("primarydealid");
+
+		if (deal.getTradeId().equals("New")) {
+			// *****************新增交易**********************/
+			return tradeServiceI.addTrade(j, deal, dealSched, id);
+
+		} else {
+			// *****************修改交易**********************/
+			return tradeServiceI.updateTrade(j, deal, dealSched, id);
+		}
+
+	}
+
+	/**
+	 * DealWith AJAX Price
+	 * 
+	 * @param view
+	 * @param vo
+	 *            页面数据 含封装的：lump、 序列、 当前市场的市场惯例、 环境改变值 、序列改变值
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@RequestMapping(params = "price", method = RequestMethod.POST)
+	@ResponseBody
+	public AjaxJson price(AjaxJson j, EqcmOptnVO vo, HttpServletRequest request, HttpServletResponse response) {
+
+		// notes user's ip:port
+		String ip = Util.getIpAddress(request);
+
+		String ipnew = Util.getIpFromRequest(request);
+
+		logger.info(ip + ":" + ipnew);
+
+		Map<String, String> map = serializer.pkgEqcmOptnJson(vo);
+
+		if (map.containsKey("error")) {
+			j.setMsg("ERROR:<br>" + map.get("error"));
+		} else {
+			j.setMsg("OK");
+			JSONObject rj = new JSONObject();
+			// add double quotation to out_file's key.
+			String jsonstrout = Util.readToJsonStr(map.get("outfile"));
+			// transform out_flie JSON_str to JSON_Object
+			JSONObject out = (JSONObject) JSON.parse(jsonstrout);
+			// add double quotation to in_file's key.
+			String jsonstrin = Util.readToJsonStr(map.get("infile"));
+			// transform in_file JSON_str to JSON_Object
+			JSONObject in = (JSONObject) JSON.parse(jsonstrin);
+			rj.put("o", out);
+			rj.put("i", in);
+			/*
+			 * view.addObject("l", map.get("in").replace("\r\n", "*"));
+			 * //System.out.println(map.get("in").replace("\r\n", "*"));
+			 */
+			// original json str
+			// have no double quotation
+			// and contain {'/r','/n','space'}
+			rj.put("istr", map.get("in"));
+			j.setObj(rj);
+		}
+		// view.setViewName("com/finanstar/eqcm/price/price_return_data");
+
+		return j;
+	}
+
+	@RequestMapping(params = "verifytrade")
+	@ResponseBody
+	public AjaxJson verifytrade(AjaxJson j, HttpServletRequest request, HttpServletResponse response) {
+
+		// 复核找出原数据 更新状态和版本号 再另存一次;
+
+		String id = request.getParameter("primarydealid");
+
+		return tradeServiceI.verifyTrade(j, id);
+	}
+
+	@RequestMapping(params = "deltrade")
+	@ResponseBody
+	public AjaxJson deltrade(AjaxJson j, HttpServletRequest request, HttpServletResponse response) {
+
+		// 复核找出原数据 更新状态和版本号 再另存一次;
+
+		String id = request.getParameter("primarydealid");
+
+		return tradeServiceI.delTrade(j, id);
+	}
+
+	@RequestMapping(params = "recoverytrade")
+	@ResponseBody
+	public AjaxJson recoverytrade(AjaxJson j, HttpServletRequest request, HttpServletResponse response) {
+
+		// 复核找出原数据 更新状态和版本号 再另存一次;
+
+		String id = request.getParameter("primarydealid");
+
+		return tradeServiceI.recoveryTrade(j, id);
+	}
+
+	/**
+	 * 查询全部deal
+	 */
+	@RequestMapping(params = "finddeallist")
+	public ModelAndView findDealList(String dealType, String VerStaDate, String VerEndDate, HttpServletRequest request,
+			HttpServletResponse response) {
+		ModelAndView view = new ModelAndView("com/finanstar/eqcm/trd/trdlist");
+		String op = request.getParameter("option");
+		view.addObject("dealType", dealType);
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		if (VerEndDate == null) {
+			VerEndDate = sdf.format(new Date());
+			VerStaDate = Util.getDay(VerEndDate, sdf, -30);
+		}
+
+		if (op.equals("1")) {
+			List<EqcmDeal> list = tradeServiceI.findNewDealOnly(dealType, VerStaDate.replaceAll("-", ""),
+					VerEndDate.replaceAll("-", ""));
+			List<EqcmDealVo> list2 = new ArrayList<>();
+			for (EqcmDeal d : list) {
+				list2.add(new EqcmDealVo(d));
+			}
+			view.addObject("deallist", list2);
+		} else {
+			List<EqcmDeal> list = tradeServiceI.findAllDeal(dealType, VerStaDate.replaceAll("-", ""),
+					VerEndDate.replaceAll("-", ""));
+			List<EqcmDealVo> list2 = new ArrayList<>();
+			for (EqcmDeal d : list) {
+				list2.add(new EqcmDealVo(d));
+			}
+			view.addObject("deallist", list2);
+		}
+		view.addObject("VerStaDate", VerStaDate);
+		view.addObject("VerEndDate", VerEndDate);
+		return view;
+	}
+
+	/**
+	 * 
+	 * @return
+	 */
+	@RequestMapping(params = "tobatch")
+	public ModelAndView toBatch(HttpServletRequest request) {
+		ModelAndView view = new ModelAndView("com/finanstar/eqcm/batch/batchjob");
+		List<String> list = eqcmBatchServiceI.findAllBatchAccount();
+		view.addObject("accountlist", list);
+		return view;
+	}
+
+	/**
+	 * Batch
+	 */
+	@RequestMapping(params = "doBatch")
+	@ResponseBody
+	public AjaxJson doBatch(HttpServletRequest request, HttpServletResponse response) throws Exception {
+		String info = request.getParameter("info");
+
+		AjaxJson json = new AjaxJson();
+
+		String[] ifl = info.split(":");
+
+		logger.info(ifl[0]);// type
+		logger.info(ifl[1]);// date
+		logger.info(ifl[2]);// book
+
+		String book = ifl[2];
+		String date = ifl[1];
+		String type = ifl[0];
+
+		if (book.contains("ALL")) {
+			// 返回信息
+			StringBuffer bu = new StringBuffer();
+			// all
+			List<String> list = eqcmBatchServiceI.findAllBatchAccount();
+			for (String string : list) {
+
+				// 更新
+				info = type + ":" + date + ":" + string;
+				// 更新
+				book = info.split(":")[2];
+
+				// System.out.println(info);
+				// singal
+
+				Map<String, Map<String, String>> redata = null;
+				Map<String, String> dealIdToId = new HashMap<>();
+
+				List<EqcmDeal> deal = eqcmBatchServiceI.findVerDeal(info);
+				// System.out.println("↓↓↓");
+				for (EqcmDeal d : deal) {
+					// System.out.println(d);
+					EqcmDealVo vo = new EqcmDealVo(d);
+					dealIdToId.put(d.getDealId(), d.getId() + "~" + vo.getMarket());
+				}
+				// System.out.println("↑↑↑");
+
+				switch (type) {
+
+				case "PNL":
+					// ↓
+				case "Delta":
+					// ↓
+				case "Vega":
+					redata = serializer.packageBatchDataToJson(deal, date, type);
+					break;
+				case "PAA":
+					redata = serializer.packageBatchEqcmPAA(book, date, type);
+					break;
+
+				default:
+					break;
+				}
+
+				// System.out.println(redata);
+				if (redata.containsKey("error")) {
+					logger.error("Have No Data:" + redata.get("error"));
+
+					json.setObj("error : " + redata.get("error"));
+
+					bu.append(ifl[0] + " Done Err: " + redata.get("error") + ",");
+
+					continue;
+				}
+				if (redata.containsKey("paaerror")) {
+					String error = redata.get("paaerror").get("error");
+
+					logger.error(error);
+
+					bu.append(ifl[0] + " Done Err: " + error + ",");
+
+					continue;
+				}
+
+				// ******************存库开始******************
+				Map<String, String> report = redata.get("file");
+				// Collection<String> fs = report.values();
+				Set<String> keys = report.keySet();
+				Iterator<String> it = keys.iterator();
+				List<String> ss = new ArrayList<>();
+
+				while (it.hasNext()) {
+					String key = it.next();
+					ss.add(report.get(key).replace(".jsn", "_out.jsn") + "&" + key.replaceAll("[\\d]", ""));
+				}
+
+				eqcmBatchServiceI.saveReport(ss, info, dealIdToId);
+
+				// ******************存库结束******************
+
+				Map<String, String> map = redata.get("rjson");
+
+				Set<String> keySet = map.keySet();
+
+				Iterator<String> iterator = keySet.iterator();
+
+				while (iterator.hasNext()) {
+					bu.append(ifl[0] + " Done OK: " + info.split(":")[2] + " " + iterator.next() + ",");
+				}
+
+			}
+
+			json.setObj(bu.toString().substring(0, bu.toString().length() - 1));
+			return json;
+		} else {
+			// singal
+
+			Map<String, Map<String, String>> redata = null;
+			Map<String, String> dealIdToId = new HashMap<>();
+
+			List<EqcmDeal> deal = eqcmBatchServiceI.findVerDeal(info);
+			// System.out.println("↓↓↓");
+			for (EqcmDeal d : deal) {
+				// System.out.println(d);
+				EqcmDealVo vo = new EqcmDealVo(d);
+				dealIdToId.put(d.getDealId(), d.getId() + "~" + vo.getMarket());
+			}
+			// System.out.println("↑↑↑");
+
+			switch (type) {
+
+			case "PNL":
+				// ↓
+			case "Delta":
+				// ↓
+			case "Vega":
+				redata = serializer.packageBatchDataToJson(deal, date, type);
+				break;
+			case "PAA":
+				redata = serializer.packageBatchEqcmPAA(book, date, type);
+				break;
+
+			default:
+				break;
+			}
+
+			// System.out.println(redata);
+			if (redata.containsKey("error")) {
+				logger.error("Have No Data:" + redata.get("error"));
+
+				json.setObj("error : " + redata.get("error"));
+
+				return json;
+			}
+			if (redata.containsKey("paaerror")) {
+				String error = redata.get("paaerror").get("error");
+
+				logger.error(error);
+
+				json.setObj("error : " + error);
+
+				return json;
+			}
+
+			// ******************存库开始******************
+			Map<String, String> report = redata.get("file");
+			// Collection<String> fs = report.values();
+			Set<String> keys = report.keySet();
+			Iterator<String> it = keys.iterator();
+			List<String> ss = new ArrayList<>();
+
+			while (it.hasNext()) {
+				String key = it.next();
+				ss.add(report.get(key).replace(".jsn", "_out.jsn") + "&" + key.replaceAll("[\\d]", ""));
+			}
+
+			eqcmBatchServiceI.saveReport(ss, info, dealIdToId);
+
+			// ******************存库结束******************
+
+			Map<String, String> map = redata.get("rjson");
+
+			Set<String> keySet = map.keySet();
+
+			Iterator<String> iterator = keySet.iterator();
+
+			StringBuffer bu = new StringBuffer();
+
+			while (iterator.hasNext()) {
+				bu.append(ifl[0] + " Done OK: " + info.split(":")[2] + " " + iterator.next() + ",");
+			}
+
+			// System.out.println(bu.toString().substring(0, bu.toString().length() - 1));
+
+			json.setObj(bu.toString().substring(0, bu.toString().length() - 1));
+
+			return json;
+
+		}
+
+	}
+
+	@RequestMapping(params = "toreport")
+	public ModelAndView toReport(ModelAndView view, HttpServletRequest request, ReportOption ro) {
+
+		String type = request.getParameter("batchType");
+		String reportname = null;
+
+		switch (type) {
+		case "PNL":
+			reportname = "收益与亏损报告";
+			view.setViewName("com/finanstar/eqcm/report/report_pnl");
+			break;
+		case "Delta":
+			reportname = "Delta 风险报告";
+			view.setViewName("com/finanstar/eqcm/report/report_delta");
+			break;
+		case "Vega":
+			reportname = "Vega 风险报告";
+			view.setViewName("com/finanstar/eqcm/report/report_vega");
+			break;
+		case "PAA":
+			reportname = "盈利贡献分析报告";
+			view.setViewName("com/finanstar/eqcm/report/report_paa");
+			break;
+
+		default:
+			break;
+		}
+
+		List<String> list = eqcmBatchServiceI.findAllReportAccount(type);
+
+		if (list.isEmpty()) {
+
+			view.setViewName("com/finanstar/common/nodata-tips");
+			view.addObject("msg", "暂无数据");
+
+			return view;
+		}
+
+		// 准备选项json
+		// 金融市场部@人民币汇率交易处@FX_CNY_A@USDCNY@20170425
+		net.sf.json.JSONObject dj = new net.sf.json.JSONObject();
+
+		for (String s : list) {
+			// System.out.println(s);
+			String[] a = s.split("@");
+
+			if (!dj.containsKey(a[0])) {
+				dj.put(a[0], new JSONObject());
+			}
+			Util.check(dj, a, 0);
+		}
+
+		// System.out.println("JSON:" + dj.toString());
+
+		String[] oo = list.get(0).split("@");
+
+		if (ro.getBook() == null) {
+			ro = new ReportOption(type, oo[0], oo[1], oo[2], oo[3], oo[4]);
+		}
+
+		// find report defualt.
+
+		ReportEqcm report = eqcmBatchServiceI.findTargetReport(ro);
+
+		List<ReportEqcmLine> ll = report.getReport();
+
+		// return json
+		JSONObject j = new JSONObject();
+		// big array
+		JSONArray jao = new JSONArray();
+
+		// PAA 特殊处理
+
+		if (type.equals("PAA")) {
+
+			for (ReportEqcmLine rf : ll) {
+				// little array
+				JSONArray jai = new JSONArray();
+
+				String item = rf.getItem();
+				if (item.startsWith("~")) {
+					item = item.substring(1);
+					jai.addAll(Arrays.asList(item.split("~")));
+					jao.add(jai);
+				} else {
+					String[] s = item.split(":");
+					String val = s[1].substring(1);
+					jai.addAll(Arrays.asList(val.split("~")));
+					j.put(s[0], jai);
+				}
+
+			}
+
+		} else {
+			for (ReportEqcmLine rf : ll) {
+				// little array
+				JSONArray jai = new JSONArray();
+				String[] s = rf.getItem().split("~");
+				jai.addAll(Arrays.asList(s));
+				jao.add(jai);
+			}
+		}
+		String[] titl;
+
+		if (type.equals("Vega")) {
+
+			System.out.println(report.toString());
+			/*
+			 * title=NumExpry:14@NumDelta:5@Title:DealId~Type~LifeYr~PvCcy~DealPV~SumVega/
+			 * 14_5~7_10P/15.
+			 * 036~7_25P/15.026~7_ATM/15.016~7_25C/15.005~7_10C/14.996~14_10P/15.033~14_25P/
+			 * 15.020~14_ATM/
+			 * 15.005~14_25C/14.990~14_10C/14.976~30_10P/15.233~30_25P/15.213~30_ATM/15.190~
+			 * 30_25C/15.168~
+			 * 30_10C/15.148~60_10P/15.540~60_25P/15.510~60_ATM/15.477~60_25C/15.445~60_10C/
+			 * 15.415~91_10P/
+			 * 15.839~91_25P/15.801~91_ATM/15.759~91_25C/15.718~91_10C/15.680~121_10P/15.915
+			 * ~121_25P/15.
+			 * 871~121_ATM/15.822~121_25C/15.774~121_10C/15.731~151_10P/15.853~151_25P/15.
+			 * 805~151_ATM/15.
+			 * 751~151_25C/15.697~151_10C/15.649~182_10P/15.593~182_25P/15.541~182_ATM/15.
+			 * 484~182_25C/15.
+			 * 427~182_10C/15.376~212_10P/15.686~212_25P/15.629~212_ATM/15.567~212_25C/15.
+			 * 505~212_10C/15.
+			 * 450~243_10P/15.696~243_25P/15.635~243_ATM/15.568~243_25C/15.502~243_10C/15.
+			 * 442~274_10P/16.
+			 * 020~274_25P/15.953~274_ATM/15.879~274_25C/15.805~274_10C/15.740~304_10P/15.
+			 * 980~304_25P/15.
+			 * 909~304_ATM/15.832~304_25C/15.755~304_10C/15.687~334_10P/15.716~334_25P/15.
+			 * 645~334_ATM/15.
+			 * 567~334_25C/15.489~334_10C/15.420~365_10P/15.768~365_25P/15.693~365_ATM/15.
+			 * 611~365_25C/15. 529~365_10C/15.456~Msgs
+			 */
+			titl = report.getTitle().split("@")[2].split(":")[1].replaceAll("/", "<br>").split("~");
+
+			j.put("titl", titl);
+
+			j.put("tableWidth", (titl.length + 1) * 137);
+
+			String s = report.getTitle().split("@")[0];
+			j.put("expry", s.split(":")[1]);
+			s = report.getTitle().split("@")[1];
+			j.put("delta", s.split(":")[1]);
+
+			// 表上部vol数据处理
+			String[] x = report.getTitle().split("@")[2].split(":")[1].split("~");
+			List<String> col = new ArrayList<>();
+			List<String> row = new ArrayList<>();
+			Map<String, String> map = new HashMap<>();
+			for (int i = 6; i < x.length; i++) {
+				if (!x[i].equals("Msgs")) {
+					String[] a = x[i].split("/");
+					map.put(a[0], a[1]);
+					String[] axy = a[0].split("_");
+					if (!row.contains(axy[0])) {
+						row.add(axy[0]);
+					}
+					if (!col.contains(axy[1])) {
+						col.add(axy[1]);
+					}
+				}
+			}
+			j.put("map", JSON.toJSON(map));
+			j.put("col", col);
+			j.put("row", row);
+		} else if (type.equals("PAA")) {
+			titl = report.getTitle().split(":")[1].substring(1).replaceAll("/", "<br>").split("~");
+			j.put("titl", titl);
+			j.put("tableWidth", (titl.length + 1) * 137);
+		} else {
+			titl = report.getTitle().split(":")[1].replaceAll("/", "<br>").split("~");
+			j.put("titl", titl);
+			j.put("tableWidth", (titl.length + 1) * 137);
+		}
+
+		j.put("batchType", type);
+		j.put("reportname", reportname);
+		j.put("ro", ro);
+		j.put("list", jao);
+		j.put("optionjson", dj.toString());
+
+		view.addObject("j", j);
+
+		return view;
+	}
+
+}

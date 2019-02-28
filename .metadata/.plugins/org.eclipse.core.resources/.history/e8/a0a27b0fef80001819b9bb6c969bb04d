@@ -1,0 +1,319 @@
+$.fn.getHexBackgroundColor = function(cssColor) {
+    var rgb = $(this).css(cssColor);
+    if (!$.browser.msie) {
+	rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+	function hex(x) {
+	    return ("0" + parseInt(x).toString(16)).slice(-2);
+	}
+	rgb = "#" + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
+    }
+    return rgb;
+}
+
+/** 提交成功提醒 */
+function submitTrdOk() {
+
+    $("#submittrd").text("提交成功")
+
+    $("#submittrd").css("color", "green")
+
+    setTimeout("comback1()", 1500);
+}
+
+/** 复核成功提醒 */
+function veriTrdOk() {
+
+    $("#verifiedtrd").text("复核成功")
+
+    $("#verifiedtrd").css("color", "green")
+    if ($("#status").val() == "Deleted") {
+	$("#recoverytrd").css("color", "black")
+	$("#recoverytrd").css("background", "lightgray")
+    }
+
+    setTimeout("comback2()", 1500);
+}
+/** 复核成功提醒 */
+function delTrdOk() {
+
+    $("#deletetrd").text("刪除成功")
+
+    $("#deletetrd").css("color", "green")
+
+    $("#submittrd").css("color", "black")
+
+    $("#submittrd").css("background", "lightgray")
+
+    $("#recoverytrd").css("color", "blue")
+
+    $("#recoverytrd").css("background", "orange")
+
+    $("#verifiedtrd").css("color", "blue")
+
+    $("#verifiedtrd").css("background", "orange")
+
+    setTimeout("comback3()", 1500);
+}
+
+function recoveryTrdOk() {
+
+    $("#recoverytrd").text("恢复成功")
+
+    $("#recoverytrd").css("color", "green")
+
+    $("#submittrd").css("color", "blue")
+
+    $("#submittrd").css("background", "orange")
+
+    $("#deletetrd").css("color", "blue")
+
+    $("#deletetrd").css("background", "orange")
+
+    setTimeout("comback4()", 1500);
+}
+
+function comback1() {
+    $('#submittrd').text('提交');
+    $("#submittrd").css("color", "blue")
+}
+function comback2() {
+    $('#verifiedtrd').text('复核');
+    $("#verifiedtrd").css("color", "black")
+    $("#verifiedtrd").css("background", "lightgray")
+}
+function comback3() {
+    $('#deletetrd').text('刪除');
+    $("#deletetrd").css("color", "black")
+    $("#deletetrd").css("background", "lightgray")
+}
+function comback4() {
+    $('#recoverytrd').text('恢复');
+    $("#recoverytrd").css("color", "black")
+    $("#recoverytrd").css("background", "lightgray")
+}
+
+// called at header.jsp <a>-mark
+/*
+ * dealId; msgs; dealType;// "EQCM_FWRD", applId;// "", tradeId;// "FS18000017",
+ * businessId;// "", externnal;// "", company;// "金融市场部",【加密】前后台 双加密 desk;//
+ * "人民币商品交易处",【加密】 book;// "CNY_COMM_HEDGE", section;// "A", brooker;// "无",
+ * calculationAgent;// "无", useClearing;// "否", counterParty;// "中国工商银行",【加密】
+ * counterPartyId;// "ICBC",【加密】 contract;// "无", tradeDate;// "20180403",
+ * recordDate;// "20180403", note;// "", version;// "2", status;// "Verified",
+ * user;// "xiao", versionDate;// "20180403" tradeTerm dealSched
+ */
+function submitTradeData() {
+
+    // 提交之前计价
+    price();
+
+    console.log($('#bookform').serialize())// 加密 AJAX动态 获取数据库 关联账户对应的 密钥
+
+    $
+	    .ajax({
+		type : "POST", // 提交的方法
+		url : "/deri-web/eqcmController.do?addtrade", // 提交的地址
+		data : "&" + $('#bookform').serialize() + "&"
+			+ $('#form').serialize() + "&tradeTerm="
+			+ JSON.stringify(trade) + "&outcome="
+			+ JSON.stringify(outcome) + "&primarydealid="
+			+ primarydealid,
+		async : false,
+		error : function(request) { // 失败的话
+		},
+		success : function(j) {// 成功
+
+		    console.log("json:" + j.obj)
+
+		    if (j.obj == "403") {
+
+			alert(j.msg)
+
+		    } else if (j.obj == "not") {
+			alert("不是最新版本，只能查看。")
+			comback1()
+		    } else if (j.obj == "hasdel") {
+			alert("已经删除，只能查看。")
+			comback1()
+		    } else {
+
+			// 更新簿记显示
+			// 更新页面数据
+			updateBook(j.obj);
+			// 交易id 主键
+			primarydealid = j.obj.id;
+
+			var lid = "eqcmlump." + j.obj.tradeId
+			var sid = "eqcmsched." + j.obj.tradeId
+
+			var lstr = localStorage.getItem("eqcmlump.New") == undefined ? "n"
+				: localStorage.getItem("eqcmlump.New");
+			var sstr = localStorage.getItem("eqcmsched.New") == undefined ? "n"
+				: localStorage.getItem("eqcmsched.New");
+			if (lstr != "n") {
+			    localStorage.removeItem("eqcmlump.New")
+			    localStorage.setItem(lid, lstr)
+			}
+			if (sstr != "n") {
+			    localStorage.removeItem("eqcmsched.New")
+			    localStorage.setItem(sid, sstr)
+			}
+
+			// 可提交状态
+			$("#verifiedtrd").css("color", "blue")
+			$("#verifiedtrd").css("background", "orange")
+			$("#deletetrd").css("color", "blue")
+			$("#deletetrd").css("background", "orange")
+			submitTrdOk()
+		    }
+		},
+		dataType : "json"
+	    });
+
+    // $("#submittrd").hide()
+    $("#verifiedtrd").show()
+
+    // 提交之前计价，更新数据，也可以手动
+    pct = 0;
+
+    price();
+
+}
+
+// called at header.jsp <a>-mark
+function verifiedTradeData() {
+
+    var clr = $("#verifiedtrd").getHexBackgroundColor("color")
+    if (clr != "#000000") {
+	// 判断复核状态
+	if ($("#status").val() == "Verified") {
+	    $("#list").html("<font color='red'><b>已经复核过了！</b></font>")
+
+	    setTimeout("$('#list').html('')", 1500);
+	} else {
+
+	    $.ajax({
+		type : "POST", // 提交的方法
+		url : "/deri-web/eqcmController.do?verifytrade", // 提交的地址
+		data : "&primarydealid=" + primarydealid + "&"
+			+ $('#bookform').serialize() + "&"
+			+ $('#form').serialize(),
+		async : false,
+		error : function(request) { // 失败的话
+		},
+		success : function(j) {// 成功
+
+		    if (j.obj == "403") {
+
+			alert(j.msg)
+
+		    } else if (j.obj == "not") {
+			alert("不是最新版本，只能查看。")
+		    } else if (j.obj == "hasdel") {
+			alert("已经删除，只能查看。")
+		    } else {
+
+			console.log("json:" + j.obj)
+			// 更新簿记显示
+			// 更新页面数据
+			updateBook(j.obj.book);
+			// 交易id 主键
+			primarydealid = j.obj.nid;
+
+			//
+			veriTrdOk()
+		    }
+		},
+		dataType : "json"
+	    });
+
+	}
+    } else {
+	alert("操作无效")
+    }
+
+}
+
+// called at header.jsp <a>-mark
+function deleteTrade() {
+    var clr = $("#deletetrd").getHexBackgroundColor("color")
+    if (clr != "#000000") {
+	$
+		.ajax({
+		    type : "POST", // 提交的方法
+		    url : "/deri-web/eqcmController.do?deltrade", // 提交的地址
+		    data : "&primarydealid=" + primarydealid + "&"
+			    + $('#bookform').serialize() + "&"
+			    + $('#form').serialize(),
+		    async : false,
+		    error : function(request) { // 失败的话
+		    },
+		    success : function(j) {// 成功
+
+			if (j.obj == "403") {
+
+			    alert(j.msg)
+
+			} else if (j.obj == "not") {
+			    alert("不是最新版本，只能查看。")
+			} else if (j.obj == "hasdel") {
+			    alert("已经删除或待删，只能查看。")
+			} else {
+			    console.log("json:" + j.obj)
+			    // 更新簿记显示
+			    // 更新页面数据
+			    updateBook(j.obj.book);
+			    // 交易id 主键
+			    primarydealid = j.obj.nid;
+			    //
+			    delTrdOk()
+			}
+
+		    },
+		    dataType : "json"
+		});
+    } else {
+	alert("操作无效")
+    }
+}
+function recoveryTradeData() {
+
+    var clr = $("#recoverytrd").getHexBackgroundColor("color")
+    if (clr != "#000000") {
+	$
+		.ajax({
+		    type : "POST", // 提交的方法
+		    url : "/deri-web/eqcmController.do?recoverytrade", // 提交的地址
+		    data : "&primarydealid=" + primarydealid + "&"
+			    + $('#bookform').serialize() + "&"
+			    + $('#form').serialize(),
+		    async : false,
+		    error : function(request) { // 失败的话
+		    },
+		    success : function(j) {// 成功
+
+			if (j.obj == "not") {
+			    alert("不是最新版本，只能查看。")
+			} else if (j.obj == "hasdel") {
+			    alert("已经删除，只能查看。")
+			} else {
+			    console.log("json:" + j.obj)
+			    // 更新簿记显示
+			    // 更新页面数据
+			    updateBook(j.obj.book);
+
+			    // 更新单个款项
+
+			    // 交易id 主键
+			    primarydealid = j.obj.nid;
+			    //
+			    recoveryTrdOk()
+			}
+
+		    },
+		    dataType : "json"
+		});
+    } else {
+	alert("操作无效")
+    }
+}

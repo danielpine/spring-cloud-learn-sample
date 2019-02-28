@@ -1,0 +1,392 @@
+﻿<!-- daniel create at 2018-04-11.-->
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title>支付序列</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<script type="text/javascript"
+	src="/deri-web/plug-in/jquery/jquery-1.8.3.js"></script>
+<link rel="stylesheet"
+	href="/deri-web/plug-in/easyui/themes/metrole/deri.css" type="text/css"></link>
+<link media="screen" rel="stylesheet"
+	href="/deri-web/plug-in/finanstar/css/priceresult.css" />
+<link media="screen" rel="stylesheet"
+	href="/deri-web/plug-in/finanstar/css/indexhome.css" />
+<link media="screen" rel="stylesheet"
+	href="/deri-web/plug-in/finanstar/css/body.css" />
+<link media="screen" rel="stylesheet"
+	href="/deri-web/plug-in/finanstar/css/env.css" />
+<style type="text/css">
+.legtable table {
+	text-align: center;
+	border-color: black;
+}
+
+.legtable table tr th {
+	background: lightcyan;
+	font-size: 0.9em;
+	text-align: center;
+}
+
+body {
+	margin: 0px 10px;
+	background: lightyellow;
+	font-family: "Helvetica", "Arial", "微软雅黑", "宋体", sans-serif;
+}
+
+input {
+	text-align: center;
+	background: orange;
+	width: 100px;
+	font-size: 0.9em;
+}
+
+/* select {
+	text-align: center;
+	background: orange;
+	width: 100px;
+	font-size: 0.9em;
+}
+
+select option {
+	background: orange;
+	text-align: center;
+} */
+p {
+	line-height: 20px
+}
+
+li {
+	line-height: 30px
+}
+
+h1 {
+	font-family: "Microsoft YaHei";
+}
+
+h2 {
+	font-family: "Microsoft YaHei";
+}
+
+/* h3 {
+	font-family: "Microsoft YaHei";
+} */
+table.price {
+	text-align: center;
+	border-color: black;
+	border-style: none none solid solid;
+	border-width: 1px;
+}
+
+th.price {
+	text-align: center;
+	border-color: black;
+	border-style: solid solid none none;
+	border-width: 1px;
+	background: lightcyan;
+	font-size: 1.0em;
+}
+
+td {
+	text-align: center;
+	border-color: black;
+	border-style: solid solid none none;
+	border-width: 1px;
+	background: lightyellow;
+	font-size: 0.9em;
+}
+
+td.tab {
+	text-align: center;
+	border-color: black;
+	border-style: solid;
+	border-width: 1px;
+	background: lightgrey;
+	font-size: 1.0em;
+}
+
+.th td {
+	background: lightcyan;
+}
+
+td.tab1 {
+	text-align: center;
+	border-color: black;
+	border-style: none none solid none;
+	border-width: 1px;
+}
+
+tt {
+	font-size: 1.0em;
+}
+</style>
+</head>
+<body onload="closeothersamepage()">
+	<div id='legview' class='view'>
+		<div class="legtable" style="width: 1080px;">
+			<div align="center" style="width: 1080px;">
+				<h3>
+					<font color='blue'>支付序列</font>:<span id='trdnum'></span>
+				</h3>
+				<hr width="500">
+			</div>
+			<table width="1080px" id='datat' border="1" cellspacing="0"
+				cellpadding="0">
+				<tr class="th" height="30px">
+					<td width=50px>编号</td>
+					<td width=90px>生效日</td>
+					<td width=90px>行权日</td>
+					<td width=90px>支付日</td>
+					<td width=120px>标的商品</td>
+					<td width=120px>面值</td>
+					<td width=90px>执行价格</td>
+					<td width=100px>定价基准</td>
+					<td width=50px>重置类型</td>
+					<td width=90px>波动率</td>
+					<td width=120px>付款金额</td>
+					<td width=80px>币种</td>
+				</tr>
+			</table>
+			<br />
+			<div class="button" style="display: none">
+				<input type='button' id='add' value='更改'
+					style='font-size: 90%; width: 120px;' />&nbsp;&nbsp;<span
+					id='subtip'></span><input type="hidden" id='hasSched' value="no">
+			</div>
+
+			&nbsp;说明：<br /> <br /> 对每个支付区间，支付日过去10天后，不能再更改日期，本金和固定利率。 <br /> <br />
+			重置日期和利率在支付区间开始日后可以更改，在结束日10天后不能更改。 <br /> <br />
+			更改主页面要重新产生支付序列和重置序列（定价前将它们删除，或设ReSched为Yes）。<br /> <br />
+			更改支付序列要重新产生重置序列（定价前将它们删除）。
+			<table id='clonet' style="display: none">
+				<!-- 赋值 -->
+				<tr id='clone' height="25px">
+					<td style='background: lightcyan;'>1</td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td style='text-align: right;'></td>
+					<td style='text-align: right;'></td>
+					<td></td>
+					<!-- Index -->
+					<td class='index'></td>
+					<!-- ResetType -->
+					<td></td>
+					<td></td>
+					<td style='text-align: right;'></td>
+					<td></td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	<!-- Dynamic contains the leg page. -->
+
+</body>
+<script type="text/javascript">
+	var trdnum = GetQueryString("id");
+
+	$(function() {
+
+		//必须放在首行
+		$("#trdnum").html(GetQueryString("id"))
+
+		$("title").html("支付序列：" + GetQueryString("id"))
+
+		//填表
+		tableinit()
+
+		var hasSched = GetQueryString("hasSched");
+
+		if (hasSched == 'Yes') {
+
+			$(".button").show();
+			$(".index").css('background', 'orange');
+			$(".index")
+					.click(
+							function() {
+								if ($(this).children('input').length == 0) {
+									var td = $(this)
+									var input = $("<input style='height: 20px;width:90px;border:0;' type='text' value='"
+											+ $(this).text() + "'>")
+									$(this).text("")
+									input.appendTo($(this))
+									input.blur(function() {
+										input.parent().text(input.val())
+										input.remove();
+									})
+									input
+											.change(function() {
+												if (isEqual(input.val(),
+														$(this).parent().attr(
+																'id'))
+														|| input.val() == 0
+														|| isNaN(input.val())) {
+													input
+															.parent()
+															.text(
+																	$(this)
+																			.parent()
+																			.attr(
+																					'id'))
+													td.next().text('P')
+													$("#hasSched").val('no');
+													input.remove();
+												} else {
+													input
+															.parent()
+															.text(
+																	toFloat(
+																			input
+																					.val(),
+																			6))
+													td.next().text('M')
+													$("#hasSched").val('yes');
+													input.remove();
+												}
+											})
+								}
+
+								$(this).children('input').focus();
+
+							});
+		}
+
+		$('#add').click(function() {
+			addResetSched()
+
+			$('#subtip').html("<font color='green'><b>提交成功,窗口即将关闭。</b></font>")
+
+			setInterval(function litSlash() {
+				$("#subtip").animate(//DOM
+				{
+					opacity : "0"
+				}, 100); //改变不透明度
+				$("#subtip").animate({
+					opacity : "1"
+				}, 200);
+			}, 200);
+			//auto close window in 0.6s.
+			setTimeout("window.close()", 600);
+
+			/* if(confirm("提交成功，关闭窗口？")){
+				window.close();
+			} */
+		});
+
+	});
+
+	function toFloat(val, bit) {
+		var f = parseFloat(val);
+		return f.toFixed(bit)
+	}
+
+	function isEqual(a, b) {
+		if (toFloat(a, 8) == toFloat(b, 8))
+			return true;
+		else
+			return false;
+	}
+
+	//动态序号
+	function codenumber() {
+		//$('table tr:not(:first)').remove();
+		var len = $('#datat tr').length;
+		for (var i = 1; i < len; i++) {
+			var t1 = $('#datat tr:eq(' + i + ') td:first');
+			t1.text(i);
+		}
+	}
+	function num(obj) {
+		obj.value = obj.value.replace(/[^\d.]/g, ""); //清除"数字"和"."以外的字符
+		obj.value = obj.value.replace(/^\./g, ""); //验证第一个字符是数字
+		obj.value = obj.value.replace(/\.{2,}/g, "."); //只保留第一个, 清除多余的
+		obj.value = obj.value.replace(".", "$#$").replace(/\./g, "").replace(
+				"$#$", ".");
+		obj.value = obj.value.replace(/^(\-)*(\d+)\.(\d\d).*$/, '$1$2.$3'); //只能输入两个小数
+	}
+	function fmt(obj) {
+		var f = parseFloat(obj.value);
+		f = f.toFixed(2)
+		if (isNaN(f)) {
+			obj.value = '0.00';
+		} else {
+			obj.value = f;
+		}
+	}
+	//get url param
+	function GetQueryString(name) {
+		var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+		var r = window.location.search.substr(1).match(reg);
+		if (r != null)
+			return unescape(r[2]);
+		return null;
+	}
+
+	function closeothersamepage() {
+
+	}
+
+	function tableinit() {
+		var leg = getleg();
+		for ( var i in leg) {
+			var data = leg[i].split("~");
+			var tr = $("#clone").clone();
+			//赋值
+			var input = tr.find("td");
+			for (var j = 1; j < input.length; j++) {
+				input.eq(j).text(data[j - 1])
+				input.eq(j).attr('id', data[j - 1])
+			}
+
+			tr.appendTo("#datat");
+		}
+		codenumber()
+	}
+
+	function getleg() {
+
+		alert(localStorage.getItem('eqcmrsh.' + trdnum()))
+
+		return localStorage.getItem('eqcmsched.' + $("#trdnum").html()).split(
+				',')
+	}
+	function updatesched() {
+		//
+		var leg = getleg();
+		localStorage.setItem('eqcmsched.' + $("#trdnum").html(), leg)
+	}
+	/**
+	 *
+	 */
+	function addResetSched() {
+		var hasSched = ($("#hasSched").val() == 'yes')
+		if (hasSched) {
+			var a = []
+			$('#datat').find("tr").each(function(n) { //这里的n可有可无
+				//开始遍历每一行的每一列
+
+				line = '';
+
+				for (var i = 0; i < $(this).find("td").length; i++) {
+
+					var td = $(this).children('td').eq(i).text(); //这里就拿到了第n行第i列的文字，你可以赋值给其他变量
+
+					if (i < $(this).find("td").length - 1)
+						line += td + "~";
+					else
+						line += td;
+				}
+				a.push(line);
+			})
+
+			a.splice(0, 1)
+
+			console.log(a)
+
+			localStorage.setItem('eqcmrsh.' + trdnum, a.toString())
+		}
+
+	}
+</script>

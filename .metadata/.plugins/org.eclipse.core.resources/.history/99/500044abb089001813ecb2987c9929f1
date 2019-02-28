@@ -1,0 +1,25 @@
+
+function showErrorMsg(msg){ 
+        drawDiv(msg)
+	$('#overlay').fadeIn('fast', function () {
+	                       $('#box').animate({ 'top': '50%' }, 0);
+	//$("#mess").html(); 
+	setTimeout("tishiclose()",1500);// 2秒消失，可以改动
+
+	                   });
+	}
+
+	function tishiclose(){
+	$('#box').animate({ 'top': '-100%' }, 200, function () {
+	                       $('#overlay').fadeOut('fast');
+	                   });
+	}
+function drawDiv(msg){
+    
+    $("#overlay").remove()
+    $("#box").remove()
+    $("<div class='overlay' id='overlay' style='display: none;'></div><div class='box' id='box' style='width: 450px; z-index: 99999999'>"+msg+"</div>").appendTo($("body").eq(0))
+
+}	
+	
+	

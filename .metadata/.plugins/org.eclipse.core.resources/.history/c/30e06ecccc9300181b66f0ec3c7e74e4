@@ -1,0 +1,469 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>申请账户</title>
+<t:base type="DatePicker"></t:base>
+<style type="text/css">
+input {
+	width: 300px;
+	height: 25px;
+	background: orange;
+}
+
+.pro input {
+	width: 20px;
+	height: 20px
+}
+
+* {
+	font-family: "Helvetica", "Arial", "微软雅黑", "宋体", sans-serif;
+}
+
+.left {
+	/* float: left; */
+	
+}
+
+.right {
+	/* float: right; */
+	
+}
+
+.outer {
+	width: 65%;
+	margin: 0 auto;
+}
+
+.width {
+	width: 100%;
+	position: relative;
+}
+
+.frame {
+	margin-left: 120px;
+	height: 100%;
+	width: 70%;
+	border: 1px black solid;
+	padding-top: 30px;
+	padding-bottom: 30px;
+	border: 1px black solid;
+}
+</style>
+<script src="http://pv.sohu.com/cityjson?ie=utf-8"></script>
+</head>
+<body style="background: lightyellow;">
+	<div class='outer'>
+		<div class=" left width">
+			<div class='width' align="center">
+				<h1>注册说明</h1>
+			</div>
+			<dl style="margin-left: 150px;">
+				<dt>欢迎光顾星汇银通衍生产品定价平台！</dt>
+				<p>
+				<dt>在这里，您可以对</dt>
+				<dt>
+					利率、汇率、商品、股票和信用等各种资产的衍生产品<br>进行创新设计、计价及风险管理，
+				</dt>
+				<dt>全面提升贵公司在瞬间万变的金融交易市场上的竞争能力与赢利水平。</dt>
+				<br>
+				<dt>星汇银通是一个互联网形式的金融衍生产品定价平台，</dt>
+				<dt>
+					有效地实现了低成本运营，<br>所需费用降到了行业最低点。
+				</dt>
+				<br>
+				<dt>星汇银通贡献给贵公司的是一个双方共赢的合作平台，</dt>
+				<dt>收费根据贵公司真实持有的交易数量来计算。</dt>
+				<br>
+				<dt>
+					对于没有从事衍生产品业务的经验客户，<br>或者不熟悉平台使用程序者，
+				</dt>
+				<dt>
+					星汇银通将提供充足的免费交易操作和培训材料，<br>全力助您顺利开展业务。
+				</dt>
+				<br>
+				<dt>您只需要经过如下几个简单的注册步骤就可以轻松进入星汇银通平台开展业务了：</dt>
+				<dt>（1） 填写和提交如下注册表。</dt>
+				<dt>（2） 星汇银通给您的邮箱发去一份使用合同，请您打印并加盖公司公章后快递寄回：</dt>
+				<dt style="margin-left: 4.8%">北京市西城区北礼士路甲98号B座315室，</dt>
+				<dt style="margin-left: 4.8%">星汇银通公司收，邮编100037，电话：13260475689。</dt>
+				<dt>（3） 星汇银通公司审批您的申请后，将给您快递数据安全U盾和用户使用手册。</dt>
+				<dt>（4） 登陆平台设置用户信息和开展业务。</dt>
+				<br>谢谢您的合作！
+			</dl>
+		</div>
+		<div class="right width">
+			<div class='width' align="center">
+				<h1>注册表</h1>
+			</div>
+			<br> <br>
+			<div class="frame">
+				<form action="applyController.do?sendRequestForm" method="post"
+					id="sendF">
+					<table style="width: 100%; text-align: center;" class="formtable"
+						border=0 align="center">
+						<tr style="height: 30px;">
+
+							<td style="width: 180px; text-align: right; font-size: 20px">公司名称&nbsp;</td>
+
+							<td class="value" style="text-align: left;"><input
+									id="company" name="company" type="text" ignore="ignore"
+									style="font-size: 1.5em;" /><br>
+							<span style="margin-left: 5px" id="companyMsg">*请输入名称</span></td>
+						</tr>
+						<tr>
+							<td>
+								<p>
+							</td>
+						</tr>
+						<tr style="height: 30px;">
+							<td style="width: 120px; text-align: right; font-size: 20px">公司地址&nbsp;</td>
+
+							<td class="value" style="text-align: left;"><input
+									id="address" name="address" type="text" ignore="ignore"
+									value="" style="font-size: 1.5em;" /><br>
+							<span style="margin-left: 5px" id="addressMsg">*请输入公司地址</span></td>
+						</tr>
+						<tr>
+							<td>
+								<p>
+							</td>
+						</tr>
+						<!-- <tr style="height: 30px;">
+					<td style="text-align: right; font-size: 20px">管理员账号&nbsp;</td>
+					<td class="value" style="text-align: left;"><input
+							id="adminAccount" name="adminAccount" type="text"
+							style="font-size: 1.5em;" /><span style="margin-left: 5px"
+						id="adminAccountMsg">*请输入以字母开头</span></td>
+				</tr>
+				<tr>
+					<td>
+						<p>
+					</td>
+				</tr>
+				<tr style="height: 30px;">
+					<td style="width: 100px; text-align: right; font-size: 20px">管理员真实姓名&nbsp;</td>
+					<td class="value" style="text-align: left;"><input type="text"
+							id="realName" name="realName" style="font-size: 1.5em;"><span
+						style="margin-left: 5px" id="realNameMsg">*请输入管理员真实姓名，长度2~15位</span></td>
+				</tr>
+				<tr>
+					<td>
+						<p>
+					</td>
+				</tr> 
+				<tr style="height: 30px;">
+					<td style="text-align: right; font-size: 20px">使用期限&nbsp;</td>
+					<td class="value" style="text-align: left;"><input
+							id="useDate" name="useDate" type="text" value=""
+							onClick="WdatePicker()"
+							style="font-size: 1.5em; width: 300px; height: 25px; background: orange;" /><span
+						style="margin-left: 5px">*请选择日期</span></td>
+				</tr>
+				<tr>
+					<td>
+						<p>
+					</td>
+				</tr>-->
+						<tr style="height: 30px;">
+							<td style="width: 100px; text-align: right; font-size: 20px">联&nbsp;&nbsp;系&nbsp;&nbsp;人</td>
+							<td class="value" style="text-align: left;"><input
+									type="text" id="realName" name="realName"
+									style="font-size: 1.5em;"><br>
+							<span style="margin-left: 5px" id="telNumMsg">*请输入联系人</span></td>
+						</tr>
+						<tr>
+							<td>
+								<p>
+							</td>
+						</tr>
+						<tr style="height: 30px;">
+							<td style="width: 100px; text-align: right; font-size: 20px">联系电话&nbsp;</td>
+							<td class="value" style="text-align: left;"><input
+									type="text" id="telNum" name="telNum" style="font-size: 1.5em;"><br>
+							<span style="margin-left: 5px" id="telNumMsg">*请输入11位纯数字号码</span></td>
+						</tr>
+						<tr>
+							<td>
+								<p>
+							</td>
+						</tr>
+						<!-- <tr style="height: 30px;">
+					<td width="100px"
+						style="width: 100px; text-align: right; font-size: 20px">用户个数&nbsp;</td>
+					<td class="value" style="text-align: left;"><input
+							id="accountNum" name="accountNum" type="text" ignore="ignore"
+							style="font-size: 1.5em;" value="" /><span
+						style="margin-left: 5px" id="accountNumMsg">*请输入正整数</span></td>
+				</tr>
+				<tr>
+					<td>
+						<p>
+					</td>
+				</tr> -->
+						<tr style="height: 30px;">
+							<td width="100px"
+								style="width: 100px; text-align: right; font-size: 20px">联系邮箱&nbsp;</td>
+							<td class="value" style="text-align: left;"><input
+									type="text" style="font-size: 1.5em;" name="email" id="email"><br>
+							<span style="margin-left: 5px" id="emailMsg">*请输入您的邮箱地址</span></td>
+						</tr>
+						<tr>
+							<td>
+								<p>
+							</td>
+						</tr>
+						<tr style="height: 30px;">
+							<td width="100px"
+								style="width: 100px; text-align: right; font-size: 20px">邮&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;编&nbsp;</td>
+							<td class="value" style="text-align: left;"><input
+									type="text" style="font-size: 1.5em;" name="email" id="email"><br>
+							<span style="margin-left: 5px" id="emailMsg">*请输入您的邮编</span></td>
+						</tr>
+						<tr>
+							<td>
+								<p>
+							</td>
+						</tr>
+						<tr style="height: 60px;">
+							<td style="text-align: right; font-size: 20px">选择产品&nbsp;</td>
+							<td class="value" style="text-align: left;">
+								<div class='pro' style="margin-left: 45px;">
+									<label><input type="checkbox" name="products"
+											value="RATE"> <font style="font-size: 18px">利率产品(RATE)</font></label>
+									<p>
+										<label><input type="checkbox" name="products"
+												value="EQCM"> <font style="font-size: 18px">股票商品(EQCM)</font></label>
+									<p>
+										<label><input type="checkbox" name="products"
+												value="FX"> <font style="font-size: 18px">汇率产品(FX)</font></label>
+									<p>
+
+										<label><input type="checkbox" name="products"
+												value="CCS"> <font style="font-size: 18px">货币利率产品(CCS)</font></label>
+									<p>
+										<label><input type="checkbox" name="products"
+												value="CDS"> <font style="font-size: 18px">信用产品(CDS)</font></label>
+									<p>
+										<label><input type="checkbox" name="products"
+												value="GENSWAP"> <font style="font-size: 18px">广义互换产品(GENSWAP)</font></label>
+								</div>
+							</td>
+						</tr>
+					</table>
+				</form>
+				<div align="center" style="width: 100%">
+					<button id="subForm" value="提交"
+						style="width: 120px; height: 26px; background: orange;"
+						onclick="subForm();return false;">提交</button>
+					<button value="清空"
+						style="width: 120px; height: 26px; background: orange;"
+						onclick="window.location.reload()">清空</button>
+				</div>
+			</div>
+			<br>
+		</div>
+		<div align="center" style="width: 100%">
+			<img alt="扫一扫联系我们" src="/deri-web/images/wechat1.JPG"
+				style="height: 200px; width: 200px; text-align: center;"> <sub>扫一扫联系我们</sub>
+		</div>
+
+		<p>
+			<br>
+	</div>
+</body>
+<script type="text/javascript"
+	src="/deri-web/plug-in/js-irs/jquery-3.2.1.js"></script>
+<script type="text/javascript">
+    //mail reg
+    var mailreg = /^([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+@([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+\.[a-zA-Z]{2,3}$/;
+    //由于方法相同，一下只写出相关的正则表达式
+
+    //对于电话号码的验证
+    var phone = /^1\d{10}$/;
+    //非法字符
+    var notFontReg = /[~#^$@%&!?%*]/gi;
+
+    var accountNumReg = /^[0-9]*[1-9][0-9]*$/;
+
+    var isAZReg = /[a-z]/i;
+
+    var isAZNumReg = /^[0-9a-zA-Z]+$/;
+    $(function() {
+	initJS()
+    })
+    function subForm() {
+	//$("#sendF").submit()
+	$.ajax({
+	    async : true,
+	    cache : false,
+	    type : 'POST',
+	    url : "/deri-web/applyController.do?sendRequestForm",// 请求的action路径
+	    data : $("#sendF").serialize() + "&ip=" + returnCitySN.cip,
+	    error : function() {// 请求失败处理函数
+	    },
+	    success : function(data) {
+		data = JSON.parse(data)
+		showErrorMsg(data.obj)
+	    }
+	});
+    }
+    function initJS() {
+	$("#company").change(function() {
+	    if (!testCompany()) {
+		$("#companyMsg").text("*格式不正确").css("color", "red")
+
+	    } else {
+		$("#companyMsg").text("*验证通过").css("color", "green")
+	    }
+	})
+	$("#address").change(function() {
+	    if (!testAddress()) {
+		$("#addressMsg").text("*格式不正确").css("color", "red")
+
+	    } else {
+		$("#addressMsg").text("*验证通过").css("color", "green")
+	    }
+	})
+	$("#adminAccount").change(
+		function() {
+		    if (testAdminAccount() == "验证通过") {
+			$("#adminAccountMsg").text(testAdminAccount()).css(
+				"color", "green")
+		    } else {
+			$("#adminAccountMsg").text(testAdminAccount()).css(
+				"color", "red")
+		    }
+
+		})
+	$("#realName").change(function() {
+	    if (!testRealName()) {
+		$("#realNameMsg").text("*格式不正确").css("color", "red")
+
+	    } else {
+		$("#realNameMsg").text("*验证通过").css("color", "green")
+	    }
+	})
+	$("#telNum").change(
+		function() {
+		    if (!testTelNum()) {
+			$("#telNumMsg").text("*手机号码格式不正确，请输入正确的手机号码").css(
+				"color", "red")
+
+		    } else {
+			$("#telNumMsg").text("*验证通过").css("color", "green")
+		    }
+		})
+
+	$("#accountNum").change(function() {
+	    if (!testAccountNum()) {
+		$("#accountNumMsg").text("*格式不正确,请输入正整数").css("color", "red")
+
+	    } else {
+		$("#accountNumMsg").text("*验证通过").css("color", "green")
+	    }
+	})
+	$("#email").change(function() {
+	    if (!testEmail()) {
+		$("#emailMsg").text("*E_mail格式不正确").css("color", "red")
+
+	    } else {
+		$("#emailMsg").text("*验证通过").css("color", "green")
+	    }
+	})
+    }
+    function testEmail() {
+	var email = $("#email").val();
+	//对电子邮件的验证
+
+	if (!email.match(mailreg)) {
+	    $("#email").focus();
+	    return false;
+	} else {
+	    return true;
+	}
+    }
+
+    function testAccountNum() {
+	var accountNum = $("#accountNum").val()
+
+	if (!accountNum.match(accountNumReg)) {
+	    $("#accountNum").focus();
+	    return false;
+	} else {
+	    return true;
+	}
+    }
+    function testRealName() {
+	var realName = $("#realName").val()
+
+	if (!realName.match(notFontReg)) {
+	    $("#realName").focus();
+	    return false;
+	} else {
+	    return true;
+	}
+    }
+    function testTelNum() {
+	var telNum = $("#telNum").val()
+
+	if (!telNum.match(phone)) {
+	    $("#telNum").focus();
+	    return false;
+	} else {
+	    return true;
+	}
+    }
+    function testAddress() {
+	var address = $("#address").val()
+
+	if (!address.match(notFontReg)) {
+	    $("#address").focus();
+	    return false;
+	} else {
+	    return true;
+	}
+    }
+    function testCompany() {
+	var company = $("#company").val()
+
+	if (!company.match(notFontReg)) {
+	    $("#company").focus();
+	    return false;
+	} else {
+	    return true;
+	}
+    }
+    function testAdminAccount() {
+	var msg = "";
+	var adminAccount = $("#adminAccount").val()
+	var first = adminAccount.substring(0, 1)
+	if (adminAccount.length >= 6) {
+	    if (!first.match(isAZReg)) {
+		$("#adminAccount").focus();
+		msg = "请以字母开头，并且大于或等于6位"
+		return msg;
+	    } else {
+		if (!adminAccount.match(isAZNumReg)) {
+		    msg = "请输入字母和数字"
+		    return msg;
+		} else {
+		    msg = "验证通过"
+		    return msg;
+		}
+	    }
+	} else {
+	    msg = "请输入六位或六位以上字符"
+	    return msg;
+	}
+
+    }
+</script>
+
+<!-- 提示窗 -->
+<link media='screen' rel='stylesheet'
+	href='/deri-web/plug-in/finanstar/css/remind.css' />
+<script type="text/javascript"
+	src="/deri-web/plug-in/finanstar/js/remind.js"></script>
+</html>

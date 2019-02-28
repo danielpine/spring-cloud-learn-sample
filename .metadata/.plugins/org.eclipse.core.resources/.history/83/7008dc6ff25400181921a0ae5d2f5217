@@ -1,0 +1,278 @@
+<%@ page language="java" import="java.util.*"
+	contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@include file="/context/mytags.jsp"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<script type="text/javascript"
+	src="/deri-web/plug-in/jquery/jquery-1.8.3.js"></script>
+<link media="screen" rel="stylesheet" href="/deri-web/plug-in/finanstar/css/env.css" />
+<script type="text/javascript" src="DATA.js"></script>
+<title></title>
+</head>
+<body bgcolor="lightyellow">
+
+
+<!-- 市场1 -->
+<div id="enview">
+<div align="left" class="env">
+<div align="center" style="width: 500px;">
+			<h3>
+				<font style="font-family: 'Microsoft YaHei';"  color='blue'>市场工具与曲线</font>:<span id='strdnum'>${j.PricerFX_Out.DealSet['Deal.0'].DealId}</span>
+			</h3>
+			<hr width="500">
+		</div>
+<input class="but" type="button" id="reload" value="重新加载" /><!-- <input class="but" type="button" id="update" value="更改" /> --><br>
+	<div align="left" class="envt">
+		<div class="tL">
+			市场：${j.PricerFX_Out.CurveSet.Curve0.Market }<br>
+			<table border="1" cellspacing="0" cellpadding="0" >
+				<tr height="55px">
+					<td style="background:lightcyan;text-align: center;">编号</td>
+					<td style="background:lightcyan;text-align: center;">index</td>
+					<td style="background:lightcyan;text-align: center;">汇率</td>
+					<td style="background:lightcyan;text-align: center;">类型</td>
+				</tr>
+				<c:set var="ic" value="${i.PricerFx.CurveDefine.CrvDef0.Instr}"></c:set>
+				<c:forEach items="${ic}" var="c" varStatus="s">
+					<c:set var="f" value="${'P.'}${s.index}"></c:set>
+					<!-- 数组 -->
+					<c:set var="cm" value="${fn:split(ic[f],'~')}"></c:set>
+					<c:if test="${fn:length(cm[0])>0 }">
+						<tr height="25px">
+							<td>${s.index+1}</td>
+							<td>${cm[0]}</td>
+							<td><input class='${cm[0]}'  name='data' type="text" id="${cm[1]}" value="${cm[1]}"></td>
+							<td>H</td>
+						</tr>
+					</c:if>
+				</c:forEach>
+			</table>
+		</div>
+		<div class="tR">
+			起始日：${j.PricerFX_Out.CurveSet.Curve0.StaDate }<br>
+			<table border="1" cellspacing="0" cellpadding="0">
+				<tr height="30px">
+					<td style="background:lightcyan;text-align: center;">天数</td>
+					<td style="background:lightcyan;text-align: center;">汇率</td>
+					<td style="background:lightcyan;text-align: center;">点差</td>
+					<td style="background:lightcyan;text-align: center;">支付日</td>
+				</tr>
+				<!-- 曲线JSON -->
+				<c:forEach items="${j.PricerFX_Out.CurveSet.Curve0.FX}" var="c"
+					varStatus="s">
+					<c:set var="f" value="${'P.'}${s.index}"></c:set>
+					<!-- 数组 -->
+					<c:set var="cm"
+						value="${fn:split(j.PricerFX_Out.CurveSet.Curve0.FX[f],'~')}"></c:set>
+					<c:if test="${fn:length(cm[0])>0 }">
+						<tr height="25px">
+							<td>${cm[0]}</td>
+							<td>${cm[1]}</td>
+							<td>${cm[2]}</td>
+							<fmt:parseDate value="${cm[3]}" var="date" pattern="yyyyMMdd"></fmt:parseDate>
+							<td><fmt:formatDate value="${date}" pattern="yyyy-MM-dd" /></td>
+						</tr>
+					</c:if>
+				</c:forEach>
+			</table>
+		</div>
+	</div>
+</div>
+<!-- 市场2 -->
+<div align="left" class="env" style="margin-top: 10px;">
+	<div align="left" class="envt">
+		<p>
+		<hr style="margin-left: 50px;" width="500px" />
+		<p>
+		<div class="tL">
+			市场：${j.PricerFX_Out.CurveSet.Curve1.Market }<br>
+			构建方法：${j.PricerFX_Out.CurveSet.Curve1.Method }<br>
+			<table border="1" cellspacing="0" cellpadding="0">
+				<tr height="55px">
+					<td style="background:lightcyan;text-align: center;">编号</td>
+					<td style="background:lightcyan;text-align: center;">index</td>
+					<td style="background:lightcyan;text-align: center;">利率</td>
+					<td style="background:lightcyan;text-align: center;">类型</td>
+				</tr>
+				<c:set var="ic" value="${i.PricerFx.CurveDefine.CrvDef1.Instr}"></c:set>
+				<c:forEach items="${ic}" var="c" varStatus="s">
+					<c:set var="f" value="${'P.'}${s.index}"></c:set>
+					<!-- 数组 -->
+					<c:set var="cm" value="${fn:split(ic[f],'~')}"></c:set>
+					<c:if test="${fn:length(cm[0])>0 }">
+						<tr  height="25px">
+							<td>${s.index+1}</td>
+							<td>${cm[0]}</td>
+							<td><input class='${cm[0] }' width="auto" name='data' id='${cm[1]}' type="text"
+								value="${cm[1]}"></td>
+							<td>H</td>
+						</tr>
+					</c:if>
+				</c:forEach>
+			</table>
+		</div>
+		<div class="tR">
+			插值方法：${j.PricerFX_Out.CurveSet.Curve1.Interp }<br>
+			起始日：${j.PricerFX_Out.CurveSet.Curve1.StaDate }<br>
+			<table border="1" cellspacing="0" cellpadding="0">
+				<tr height="30px">
+					<td style="background:lightcyan;text-align: center;">天数</td>
+					<td style="background:lightcyan;text-align: center;">贴现因子</td>
+					<td style="background:lightcyan;text-align: center;">零息利率</td>
+					<td style="background:lightcyan;text-align: center;">远期利率</td>
+				</tr>
+				<!-- 曲线JSON -->
+				<c:set var="z" value="${j.PricerFX_Out.CurveSet.Curve1.Zcdf}"></c:set>
+				<c:forEach items="${z}" var="c" varStatus="s">
+					<c:set var="f" value="${'P.'}${s.index}"></c:set>
+					<!-- 数组 -->
+					<c:set var="cm" value="${fn:split(z[f],'~')}"></c:set>
+					<c:if test="${fn:length(cm[0])>0 }">
+						<tr height="25px">
+							<td>${cm[0]}</td>
+							<td>${cm[1]}</td>
+							<td>${cm[2]}</td>
+							<td>${cm[3]}</td>
+						</tr>
+					</c:if>
+				</c:forEach>
+			</table>
+		</div>
+	</div>
+</div>
+<!-- VOL -->
+<div style="margin-top: -180px;" align="left" class="env">
+	<div align="left" class="envt">
+		<p>
+		<hr style="margin-left: 50px;" width="500px" />
+		<p>
+		<div class="vol">
+			<c:set var="m" value="${j.PricerFX_Out.ModelPair.Model.MarketVol}"></c:set>
+			市场：${m.Market }&nbsp;&nbsp; 起始日：${m.StaDate }&nbsp;&nbsp;
+			波动率类型：${m.VolType }&nbsp;&nbsp; 工具类型：${m.InstType }<br>
+			<table border="1" cellspacing="0" cellpadding="0">
+				<!-- 表头 -->
+				<c:set var="h" value="${j.PricerFX_Out.ModelPair.Model.MarketVol}"></c:set>
+				<tr height="25px">
+					<c:set var="t" value="${h.Title}"></c:set>
+					<c:set var="arr" value="${fn:split(t,'~')}"></c:set>
+					<c:forEach items="${arr}" var="c" varStatus="s">
+						<td style="background:lightcyan;text-align: center;">${c}</td>
+					</c:forEach>
+				</tr>
+				<c:forEach items="${h }" var="col" varStatus="s">
+					<c:set var="f" value="${'P.'}${s.index}"></c:set>
+					<c:set var="cm" value="${fn:split(h[f],'~')}"></c:set>
+					<c:if test="${fn:length(cm[0])>0 }">
+						<tr height="25px">
+							<c:forEach items="${arr}" var="c" varStatus="ss">
+								<c:choose>
+									<c:when test="${ss.index eq 0 }">
+										<td style="background:lightcyan;text-align: center;">${cm[ss.index]}</td>
+									</c:when>
+									<c:when test="${ss.index eq 6 }">
+										<fmt:parseDate value="${cm[ss.index]}" var="date" pattern="yyyyMMdd"></fmt:parseDate>
+										<td><fmt:formatDate value="${date}" pattern="yyyy-MM-dd" /></td>
+									</c:when>
+									<c:otherwise>
+										<td><input class='${cm[0]}${c }' id='${cm[ss.index]}' name='voldata' style="height: 20px; width: 90px;"
+											type="text" value="${cm[ss.index]}"></td>
+									</c:otherwise>
+								</c:choose>
+							</c:forEach>
+						</tr>
+					</c:if>
+				</c:forEach>
+			</table>
+		</div>
+		<div class="vol" style="margin-top: 20px;">
+			<table border="1" cellspacing="0" cellpadding="0">
+				<!-- 表头 -->
+				<c:set var="h" value="${j.PricerFX_Out.ModelPair.Model.ModelVol}"></c:set>
+				<tr  height="25px">
+					<c:set var="t" value="${h.Title}"></c:set>
+					<c:set var="arr" value="${fn:split(t,'~')}"></c:set>
+					<c:forEach items="${arr}" var="c" varStatus="s">
+						<td style="background:lightcyan;text-align: center;">${c}</td>
+					</c:forEach>
+				</tr>
+				<c:forEach items="${h }" var="col" varStatus="s">
+					<c:set var="f" value="${'P.'}${s.index}"></c:set>
+					<c:set var="cm" value="${fn:split(h[f],'~')}"></c:set>
+					<c:if test="${fn:length(cm[0])>0 }">
+						<tr height="25px">
+							<c:forEach items="${arr}" var="c" varStatus="ss">
+								<c:choose>
+									<c:when test="${ss.index eq 0 }">
+										<td style="background:lightcyan;text-align: center;">${cm[ss.index]}</td>
+									</c:when>
+									<c:otherwise>
+										<td>${cm[ss.index]}</td>
+									</c:otherwise>
+								</c:choose>
+							</c:forEach>
+						</tr>
+					</c:if>
+				</c:forEach>
+			</table>
+		</div>
+	</div>
+</div>
+</div>
+<div id='view'></div>
+</body>
+
+<script type="text/javascript">
+
+/** format float and thousand. */
+function formatNumber(num, cent, isThousand) {
+
+  num = num.toString().replace(/\$|\,/g, '');
+
+  // 检查传入数值为数值类型
+  if (isNaN(num)) num = "0";
+
+  // 获取符号(正/负数)
+  sign = (num == (num = Math.abs(num)));
+
+  num = Math.floor(num * Math.pow(10, cent) + 0.50000000001); // 把指定的小数位先转换成整数.多余的小数位四舍五入
+  cents = num % Math.pow(10, cent); // 求出小数位数值
+  num = Math.floor(num / Math.pow(10, cent)).toString(); // 求出整数位数值
+  cents = cents.toString(); // 把小数位转换成字符串,以便求小数位长度
+
+  // 补足小数位到指定的位数
+  while (cents.length < cent)
+    cents = "0" + cents;
+
+  if (isThousand) {
+    // 对整数部分进行千分位格式化.
+    for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+      num = num.substring(0, num.length - (4 * i + 3)) + ','
+              + num.substring(num.length - (4 * i + 3));
+  }
+
+  if (cent > 0)
+    return (((sign) ? '' : '-') + num + '.' + cents);
+  else
+    return (((sign) ? '' : '-') + num);
+}
+$(function(){
+	$("#view").html(localStorage.getItem('init.'+GetQueryString("id")))
+	$("title").html("环境："+GetQueryString("id"))
+	$("#a").hide();
+	$(".table").hide();
+	$(".out").hide();
+	$(".env").show();
+});
+
+function GetQueryString(name)
+{
+     var reg = new RegExp("(^|&)"+ name +"=([^&]*)(&|$)");
+     var r = window.location.search.substr(1).match(reg);
+     if(r!=null)return  unescape(r[2]); return null;
+}
+</script>
+
+</html>

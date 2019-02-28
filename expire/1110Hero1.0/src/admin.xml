@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<system>
+<admin>
+<id>admin01</id>
+<password>123456</password>
+</admin>
+<admin>
+<id>admin02</id>
+<password>654321</password>
+</admin>
+<admin>
+<id>1</id>
+<password>1</password>
+</admin>
+</system>
