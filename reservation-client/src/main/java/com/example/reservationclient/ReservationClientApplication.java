@@ -20,6 +20,7 @@ import org.springframework.integration.annotation.Gateway;
 import org.springframework.integration.annotation.IntegrationComponentScan;
 import org.springframework.integration.annotation.MessagingGateway;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 
+@EnableResourceServer
 @IntegrationComponentScan
 @EnableBinding(ReservationChannels.class)
 @EnableFeignClients
@@ -53,6 +55,9 @@ interface ReservationReader {
 	@GetMapping(value = "reservations")
 	Resources<Reservation> read();
 
+	@GetMapping(value = "msg")
+	String msg();
+
 }
 
 @MessagingGateway
@@ -74,7 +79,7 @@ class Reservation {
 @RestController
 @RequestMapping("/reservations")
 class ReservationApiGateaWay {
-	
+
 	private static Logger logger = LoggerFactory.getLogger(ReservationApiGateaWay.class);
 
 	private final ReservationReader reservationReader;
@@ -89,7 +94,7 @@ class ReservationApiGateaWay {
 
 	@RequestMapping(method = RequestMethod.POST)
 	public void write(@RequestBody Reservation rs) {
-		logger.info("reservation-client calling reservation-service!");
+//		logger.info("reservation-client calling reservation-service!");
 		this.reservationWriter.write(rs.getReservationName());
 	}
 
@@ -100,8 +105,19 @@ class ReservationApiGateaWay {
 	@HystrixCommand(fallbackMethod = "fallback")
 	@GetMapping(value = "/names")
 	public Collection<String> names() {
-		logger.info("reservation-client calling reservation-service!");
+//		logger.info("reservation-client calling reservation-service!");
 		return this.reservationReader.read().getContent().stream().map(Reservation::getReservationName)
 				.collect(Collectors.toList());
+	}
+
+	public String msgFallback() {
+		return "Unavailable";
+	}
+
+	@HystrixCommand(fallbackMethod = "msgFallback")
+	@GetMapping(value = "/msg")
+	public String msg() {
+//		logger.info("reservation-client calling reservation-service!");
+		return this.reservationReader.msg();
 	}
 }

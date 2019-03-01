@@ -15,6 +15,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.cloud.netflix.feign.EnableFeignClients;
+import org.springframework.cloud.netflix.feign.FeignClient;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.Input;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,10 +26,13 @@ import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.SubscribableChannel;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 @EnableBinding(ReservationChannels.class)
 @EnableDiscoveryClient
+@EnableFeignClients
 @SpringBootApplication
 public class DanServiceApplication {
 	public static void main(String[] args) {
@@ -35,22 +40,26 @@ public class DanServiceApplication {
 	}
 }
 
+@FeignClient("web-service")
+interface WebServiceCaller {
+	@RequestMapping(value = "/", method = RequestMethod.GET)
+	public String getGreeting();
+}
+
 @RestController
 @RefreshScope
 class MessageRestController {
-
 	private final String value;
-
+	private final WebServiceCaller webCaller;
 	@Autowired
-	public MessageRestController(@Value("${message}") String value) {
+	public MessageRestController(@Value("${message}") String value, WebServiceCaller webCaller) {
 		this.value = value;
+		this.webCaller = webCaller;
 	}
-
 	@GetMapping(value = "msg")
 	String read() {
-		return this.value;
+		return this.value + " | " + this.webCaller.getGreeting();
 	}
-
 }
 
 interface ReservationChannels {
@@ -89,7 +98,7 @@ class ReservationProcessor {
 
 	@ServiceActivator(inputChannel = "input")
 	public void onNewReservation(String reservationName) {
-		LOG.info("Input ReservationName:" + reservationName);
+//		LOG.info("Input ReservationName:" + reservationName);
 		this.reservationRepository.save(new Reservation(reservationName));
 	}
 }
